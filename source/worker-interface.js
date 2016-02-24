@@ -8,14 +8,14 @@ function generateWorkerBlobData(importScriptURLs) {
   for (var index = 0; index < length; index++) {
     importScriptURLs[index] = WorkerInterface.fullImportScriptURL(importScriptURLs[index]);
   }
-  return createBlob([
+  return generateBlob([
     Scripts.DEPS_SRC,
     Scripts.INTERFACE_SRC,
     Scripts.SELF_SRC.replace('{$}', importScriptURLs.join('", "'))
   ], 'text/javascript;charset=UTF-8');
 }
 
-function createBlob(data, type) {
+function generateBlob(data, type) {
   var blob = new Blob(data instanceof Array ? data : [data], {type: type || 'text/plain;charset=UTF-8'});
   return window.URL.createObjectURL(blob);
 }
@@ -42,7 +42,7 @@ function fullImportScriptURL(path) {
 }
 
 var getId = (function() {
-  var _base = 'CMD/';
+  var _base = 'WI/';
   var _index = 0;
   return function() {
     return _base + String(++_index) + '/' + String(Date.now());
@@ -112,7 +112,74 @@ function evaluateRequest(type, cmd, value, target) {
   return result;
 }
 
-function WorkerInterface(importScriptURLs, type) {
+/**
+ * The object that will be available on other side
+ * @param _name
+ * @param _dispatcher
+ * @constructor
+ */
+function TargetMirror(_name, _dispatcher) {
+  Object.define
+  name
+}
+
+/**
+ * The object that can be used to send Target to other side
+ * @param _host
+ * @param _name
+ * @constructor
+ */
+function TargetLink(_owner, _host, _name) {
+  Object.defineProperties(this, {
+    owner: {
+      value: _owner
+    },
+    host: {
+      value: _host
+    },
+    name: {
+      value: _name
+    },
+    type: {
+      value: typeof _host
+    }
+  });
+  this.toJSON = function() {
+    return {
+      _targetLink_: {
+        name: this.name
+      }
+    };
+  };
+}
+TargetLink.isLink = function(object) {
+  return object instanceof TargetLink || (object instanceof Object && object.hasOwnProperty('_targetLink_'));
+}
+
+function TargetPool(_owner) {
+  var _hosts = new Map();
+  var _links = new Map();
+  this.add = function(target, name) {
+    var id = String(name) || getId();
+    if (_map.has(id)) {
+      throw new Error('Target with name "' + name + '" already exists.');
+    }
+    /*
+     if (_map.has(target)) {
+     throw new Error('Target already registered.');
+     }
+     */
+    var link = new TargetLink(_owner, target, id);
+    //FIXME Add to EventDispatcher ability to pre-process every event that is going to be dispatched
+    _owner.dispatcher.dispatchEvent(Events.TARGET_REGISTERED, link.toJSON());
+    _map.set(id, target);
+    _map.set(target, id);
+    _links.set(target, link);
+    return link;
+  }
+}
+
+function WorkerInterfaceBase(importScriptURLs, type) {
   var _this = this;
   var _dispatcher = null;
   var _scopeApi = false;
@@ -140,7 +207,6 @@ function WorkerInterface(importScriptURLs, type) {
   }
 
   function requestEventHandler(event) {
-    console.log('REquest received', event);
     var result;
     var data = event.data;  // {type:string, id:string, cmd:string, value:any}
     try {
@@ -210,15 +276,15 @@ function WorkerInterface(importScriptURLs, type) {
     _dispatcher.dispatchEvent(Events.RESPONSE_EVENT, result);
   }
 
-  function get(path) {
+  function get(path, targetId) {
     return sendRequest(CommandType.GET, path);
   }
 
-  function set(path, value) {
+  function set(path, value, targetId) {
     return sendRequest(CommandType.SET, path, value);
   }
 
-  function call(path, args) {
+  function call(path, args, targetId) {
     if (!args) {
       args = [];
     } else if (!(args instanceof Array)) {
@@ -227,7 +293,7 @@ function WorkerInterface(importScriptURLs, type) {
     return sendRequest(CommandType.CALL, path, args);
   }
 
-  function execute(command) {
+  function execute(command, targetId) {
     return sendRequest(CommandType.EXEC, command);
   }
 
@@ -252,11 +318,56 @@ function WorkerInterface(importScriptURLs, type) {
   _dispatcher.addEventListener(Events.RESPONSE_EVENT, responseEventHandler);
 }
 
+if (typeof(Proxy) === 'function') {
+  var WorkerInterface = new Proxy(WorkerInterfaceBase, {
+    construct: function(targetDefinition, args) {
+      var target = new WorkerInterfaceBase(args[0], args[1]);
+      return new Proxy(target, {
+        /**
+         * To make function calls real
+         * 1. Return promise
+         * 2. use TargetPool to register selected function
+         * 3.
+         * @param target
+         * @param name
+         * @param receiver
+         * @returns {*}
+         */
+        get: function(target, name, receiver) {
+          return target.get(name);
+        },
+        set: function(target, name, value, receiver) {
+          return target.set(name, value);
+        },
+        has: function(target, name) {
+          return false;
+        },
+        deleteProperty: function(target, name) {
+          return false;
+        },
+        ownKeys: function(target) {
+          return [];
+        }
+      });
+    }
+  });
+} else {
+  function WorkerInterface(importScriptURLs, type) {
+    WorkerInterfaceBase.apply(this, arguments);
+  }
+}
+
+function create(importScriptURLs) {
+  return new WorkerInterface(importScriptURLs, WorkerInterface.DEDICATED);
+}
+
+WorkerInterface.create = create;
 WorkerInterface.isStandalone = isStandalone;
-WorkerInterface.createBlob = createBlob;
+WorkerInterface.generateBlob = generateBlob;
 WorkerInterface.fullImportScriptURL = fullImportScriptURL;
 WorkerInterface.DEDICATED = WorkerEventDispatcher.WorkerType.DEDICATED_WORKER;
-WorkerInterface.SHARED = WorkerEventDispatcher.WorkerType.SHARED_WORKER;
+// Shared workers are not supported yet
+//WorkerInterface.SHARED = WorkerEventDispatcher.WorkerType.SHARED_WORKER;
 WorkerInterface.READY_EVENT = Events.READY_EVENT;
 WorkerInterface.READY_HANDLER = 'onInterfaceReady';
 //WorkerInterface.EventDispatcher = EventDispatcher;
