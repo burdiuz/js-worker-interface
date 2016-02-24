@@ -8,8 +8,6 @@ var stringInject = require('gulp-string-inject');
 var rename = require('gulp-rename');
 var include = require('gulp-include');
 
-//FIXME make it asynchronous, because files are not created when 'build' task requests them
-
 gulp.task('compile', function(callback) {
   gulp.src('source/worker-interface.js')
     // create concatenated file

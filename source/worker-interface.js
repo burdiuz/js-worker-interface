@@ -2,19 +2,6 @@
  * Created by Oleg Galaburda on 19.02.16.
  */
 
-var EventDispatcher = (function() {
-  //=include ../bower_components/event-dispatcher/source/event-dispatcher.js
-  return EventDispatcher;
-})();
-var MessagePortDispatcher = (function() {
-  //=include ../bower_components/messageport-dispatcher/source/messageport-dispatcher.js
-  return MessagePortDispatcher;
-})();
-var WorkerEventDispatcher = (function() {
-  //=include ../bower_components/worker-event-dispatcher/source/worker-event-dispatcher.js
-  return WorkerEventDispatcher;
-})();
-
 function generateWorkerBlobData(importScriptURLs) {
   importScriptURLs = importScriptURLs instanceof Array ? importScriptURLs : [String(importScriptURLs)];
   var length = importScriptURLs.length;
@@ -22,6 +9,7 @@ function generateWorkerBlobData(importScriptURLs) {
     importScriptURLs[index] = WorkerInterface.fullImportScriptURL(importScriptURLs[index]);
   }
   return createBlob([
+    Scripts.DEPS_SRC,
     Scripts.INTERFACE_SRC,
     Scripts.SELF_SRC.replace('{$}', importScriptURLs.join('", "'))
   ], 'text/javascript;charset=UTF-8');
@@ -57,12 +45,12 @@ var getId = (function() {
   var _base = 'CMD/';
   var _index = 0;
   return function() {
-    return _base + String(++_index);
+    return _base + String(++_index) + '/' + String(Date.now());
   };
 })();
 
 function isStandalone() {
-  return Scripts && Scripts.hasOwnProperty('SELF_SRC');
+  return typeof Scripts !== 'undefined' && Scripts.hasOwnProperty('SELF_SRC');
 };
 
 function createDeferred(id) {
@@ -87,6 +75,7 @@ var CommandType = {
 };
 
 var Events = {
+  READY_EVENT: 'interfaceReady',
   REQUEST_EVENT: '~WI:Request',
   RESPONSE_EVENT: '~WI:Response'
 };
@@ -96,9 +85,9 @@ var ResponseTypes = {
   RESULT_FAILURE: 'failure'
 };
 
-function execute(type, cmd, value, target) {
+function evaluateRequest(type, cmd, value, target) {
   var handler, result = undefined;
-  switch (data.type) {
+  switch (type) {
     case CommandType.CALL:
       with (target) {
         eval('handler = ' + cmd);
@@ -120,11 +109,14 @@ function execute(type, cmd, value, target) {
       handler(value, target);
       break;
   }
-  return {type: ResponseTypes.RESULT_SUCCESS, value: result};
+  return result;
 }
 
 function WorkerInterface(importScriptURLs, type) {
+  var _this = this;
   var _dispatcher = null;
+  var _scopeApi = false;
+  var _ready = false;
   if (importScriptURLs) {
     if (isStandalone()) {
       _dispatcher = WorkerEventDispatcher.create(generateWorkerBlobData(importScriptURLs), type || WorkerInterface.DEDICATED);
@@ -133,31 +125,41 @@ function WorkerInterface(importScriptURLs, type) {
     }
   } else {
     _dispatcher = WorkerEventDispatcher.self();
+    _scopeApi = true;
+    _ready = true;
+    _dispatcher.dispatchEvent(Events.READY_EVENT);
   }
 
   var _requests = {};
 
-  _dispatcher.addEventListener(Events.REQUEST_EVENT, function(event) {
+  function readyEventHandler() {
+    _ready = true;
+    if (_this.pool && typeof(_this.pool[WorkerInterface.READY_HANDLER]) === 'function') {
+      _this.pool[WorkerInterface.READY_HANDLER].call(_this.pool);
+    }
+  }
+
+  function requestEventHandler(event) {
+    console.log('REquest received', event);
     var result;
     var data = event.data;  // {type:string, id:string, cmd:string, value:any}
     try {
-      result = execute(data.type, data.cmd, data.value, this.pool);
+      result = evaluateRequest(data.type, data.cmd, data.value, _this.pool);
     } catch (error) {
-      _dispatcher.dispatchEvent(Events.RESPONSE_EVENT, {
-        id: data.id,
-        type: ResponseTypes.RESULT_FAILURE,
-        value: {
-          name: error.name,
-          message: error.message
-        }
-      });
+      sendResponse({
+        name: error.name,
+        message: error.message
+      }, ResponseTypes.RESULT_FAILURE, data.id);
       throw error;
     }
-    result.id = data.id;
-    _dispatcher.dispatchEvent(Events.RESPONSE_EVENT, result);
-  }.bind(this));
+    if (result instanceof Promise) {
+      handlePromiseResponse(result, data.id);
+    } else {
+      sendResponse(result, ResponseTypes.RESULT_SUCCESS, data.id);
+    }
+  }
 
-  _dispatcher.addEventListener(Events.RESPONSE_EVENT, function(event) {
+  function responseEventHandler(event) {
     var data = event.data; // {type:string, id:string, value:any}
     var deferred = _requests[data.id];
     delete _requests[data.id];
@@ -172,9 +174,9 @@ function WorkerInterface(importScriptURLs, type) {
         deferred.resolve(data.value);
         break;
     }
-  });
+  }
 
-  function sendCommand(type, cmd, value) {
+  function sendRequest(type, cmd, value) {
     var id = getId();
     var pack = {
       type: type,
@@ -184,16 +186,36 @@ function WorkerInterface(importScriptURLs, type) {
     };
     var deferred = createDeferred(id);
     _requests[id] = deferred;
-    _dispatcher.dispatchEvent(WorkerInterface.REQUEST_EVENT, pack);
+    _dispatcher.dispatchEvent(Events.REQUEST_EVENT, pack);
     return deferred.promise;
   }
 
+  function handlePromiseResponse(promise, id) {
+    promise.then(
+      function(result) {
+        sendResponse(result, ResponseTypes.RESULT_SUCCESS, id);
+      },
+      function(result) {
+        sendResponse(result, ResponseTypes.RESULT_FAILURE, id);
+      }
+    );
+  }
+
+  function sendResponse(data, type, id) {
+    var result = {
+      id: id,
+      type: type,
+      value: data
+    };
+    _dispatcher.dispatchEvent(Events.RESPONSE_EVENT, result);
+  }
+
   function get(path) {
-    return sendCommand(CommandType.GET, path);
+    return sendRequest(CommandType.GET, path);
   }
 
   function set(path, value) {
-    return sendCommand(CommandType.SET, path, value);
+    return sendRequest(CommandType.SET, path, value);
   }
 
   function call(path, args) {
@@ -202,11 +224,11 @@ function WorkerInterface(importScriptURLs, type) {
     } else if (!(args instanceof Array)) {
       args = [args];
     }
-    return sendCommand(CommandType.CALL, path, args);
+    return sendRequest(CommandType.CALL, path, args);
   }
 
   function execute(command) {
-    return sendCommand(CommandType.EXEC, command);
+    return sendRequest(CommandType.EXEC, command);
   }
 
   this.get = get;
@@ -222,12 +244,21 @@ function WorkerInterface(importScriptURLs, type) {
       writable: false
     }
   });
+
+  if (!_scopeApi) {
+    _dispatcher.addEventListener(Events.READY_EVENT, readyEventHandler);
+  }
+  _dispatcher.addEventListener(Events.REQUEST_EVENT, requestEventHandler);
+  _dispatcher.addEventListener(Events.RESPONSE_EVENT, responseEventHandler);
 }
 
-WorkerInterface.fullImportScriptURL = fullImportScriptURL;
+WorkerInterface.isStandalone = isStandalone;
+WorkerInterface.createBlob = createBlob;
 WorkerInterface.fullImportScriptURL = fullImportScriptURL;
 WorkerInterface.DEDICATED = WorkerEventDispatcher.WorkerType.DEDICATED_WORKER;
 WorkerInterface.SHARED = WorkerEventDispatcher.WorkerType.SHARED_WORKER;
-WorkerInterface.EventDispatcher = EventDispatcher;
-WorkerInterface.MessagePortDispatcher = MessagePortDispatcher;
+WorkerInterface.READY_EVENT = Events.READY_EVENT;
+WorkerInterface.READY_HANDLER = 'onInterfaceReady';
+//WorkerInterface.EventDispatcher = EventDispatcher;
+//WorkerInterface.MessagePortDispatcher = MessagePortDispatcher;
 WorkerInterface.WorkerEventDispatcher = WorkerEventDispatcher;
