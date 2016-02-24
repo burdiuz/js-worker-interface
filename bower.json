@@ -1,0 +1,48 @@
+{
+  "name": "worker-interface",
+  "description": "WorkerInterface based on WorkerEventDispatcher is extension to Web Workers interface.",
+  "version": "0.0.1",
+  "main": [
+    "dist/worker-interface.min.js"
+  ],
+  "moduleType": [
+    "amd",
+    "globals",
+    "node"
+  ],
+  "license": "MIT",
+  "authors": [
+    "Oleg Galaburda <burdiuz@gmail.com> (http://actualwave.com/)"
+  ],
+  "ignore": [
+    "**/.*",
+    "source",
+    "tests",
+    "gulpfile.js",
+    "karma.conf.js",
+    "package.json",
+    "server.js",
+    "node_modules",
+    "bower_components",
+    "test"
+  ],
+  "keywords": [
+    "events",
+    "webworker",
+    "worker",
+    "fire",
+    "handle",
+    "listener",
+    "dispatcher"
+  ],
+  "homepage": "https://github.com/burdiuz/js-worker-interface",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/burdiuz/js-worker-interface.git"
+  },
+  "dependencies": {
+	"worker-event-dispatcher": "git://github.com/burdiuz/js-worker-event-dispatcher.git"
+  },
+  "devDependencies": {
+  }
+}

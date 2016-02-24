@@ -1,0 +1,50 @@
+{
+  "name": "worker-interface",
+  "description": "WorkerInterface based on WorkerEventDispatcher is extension to Web Workers interface.",
+  "version": "0.0.1",
+  "main": "dist/worker-interface.min.js",
+  "keywords": [
+    "events",
+    "webworker",
+    "worker",
+    "fire",
+    "handle",
+    "listener",
+    "dispatcher"
+  ],
+  "homepage": "https://github.com/burdiuz/js-worker-interface",
+  "bugs": {
+    "url": "https://github.com/burdiuz/js-worker-interface/issues",
+    "email": "burdiuz@gmail.com"
+  },
+  "license": "MIT",
+  "author": "Oleg Galaburda <burdiuz@gmail.com> (http://actualwave.com/)",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/burdiuz/js-worker-interface.git"
+  },
+  "dependencies": {
+    "worker-event-dispatcher": "git://github.com/burdiuz/js-worker-event-dispatcher.git"
+  },
+  "devDependencies": {
+    "express": "^4.13.3",
+    "gulp": "^3.9.0",
+    "gulp-include": "^2.1.0",
+    "gulp-rename": "^1.2.2",
+    "gulp-strip-comments": "^2.2.1",
+    "gulp-uglify": "^1.5.1",
+    "karma": "^0.13.16",
+    "karma-coverage": "^0.5.3",
+    "karma-coveralls": "^1.1.2",
+    "karma-mocha": "^0.2.1",
+    "karma-phantomjs-launcher": "^0",
+    "karma-sinon-chai": "^1.1.0",
+    "mocha": "^2.4.5",
+    "phantomjs": "^1.9",
+    "through2": "^2.0.1",
+    "gulp-string-inject": "git://github.com/burdiuz/gulp-string-inject.git"
+  },
+  "scripts": {
+    "test": "./node_modules/.bin/karma start --single-run --browsers PhantomJS karma.conf.js"
+  }
+}
