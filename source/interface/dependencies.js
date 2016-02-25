@@ -14,6 +14,3 @@ var WorkerEventDispatcher = (function() {
   //=include ../node_modules/worker-event-dispatcher/source/worker-event-dispatcher.js
   return WorkerEventDispatcher;
 })();
-
-WorkerInterface.EventDispatcher = EventDispatcher;
-WorkerInterface.MessagePortDispatcher = MessagePortDispatcher;

@@ -41,31 +41,9 @@ function fullImportScriptURL(path) {
   return fullPath;
 }
 
-var getId = (function() {
-  var _base = 'WI/';
-  var _index = 0;
-  return function() {
-    return _base + String(++_index) + '/' + String(Date.now());
-  };
-})();
-
 function isStandalone() {
   return typeof Scripts !== 'undefined' && Scripts.hasOwnProperty('SELF_SRC');
 };
-
-function createDeferred(id) {
-  var resolve, reject;
-  var promise = new Promise(function(res, rej) {
-    resolve = res;
-    reject = rej;
-  });
-  return {
-    id: id,
-    resolve: resolve,
-    reject: reject,
-    promise: promise
-  };
-}
 
 function create(importScriptURLs) {
   return new WorkerInterface(importScriptURLs, WorkerInterface.DEDICATED);
