@@ -58,6 +58,10 @@ var WorkerInterface = (function() {
           }
         });
       },
+      apply: function(target, thisValue, args) {
+        // FIXME call without name means call should be applied to target, so if target is function it should be called.
+        return target.call(null, args);
+      },
       set: function(target, name, value, receiver) {
         return target.set(name, value);
       },
@@ -73,15 +77,6 @@ var WorkerInterface = (function() {
     });
     applyInterfaceAPI(target, proxy);
     return proxy;
-  }
-  //FIXME Before receiving response from Worker i cannot know if its function or object, must be combined.
-  function createFunctionProxy(target) {
-    return new Proxy(target, {
-      apply: function(target, thisValue, args) {
-        // FIXME call without name means call should be applied to target, soif target isfunction it should be called.
-        return target.call(null, args);
-      }
-    });
   }
 
   var definition = null;

@@ -5,40 +5,37 @@
 var TargetStatus = {
   PENDING: 'pending',
   RESOLVED: 'resolved',
-  REJECTED: 'rejected'
+  REJECTED: 'rejected',
+  DESTROYED: 'destroyed'
 };
 
-//FIXME Instances of this object must be returned from WorkerInterface.get() all the time
 //FIXME provide way to return RequestTarget back to worker, it should transform to original value when received
 var RequestTarget = (function() {
-  function _sendQueue() {
-    while (this._queue && this._queue.length) {
-      var request = this._queue.shift();
-      this._sendRequestHandler(request[0], request[1]);
-    }
-    this._queue = null;
-  }
 
   function _sendRequest(type, cmd, value) {
     var pack = {
       type: type,
       cmd: cmd,
       value: value,
-      target: this._id
+      target: this.id
     };
     var deferred = createDeferred();
-    switch (this._status) {
+    var promise = deferred.promise;
+    switch (this.status) {
       case TargetStatus.PENDING:
         this._queue.push([pack, deferred]);
         break;
       case TargetStatus.REJECTED:
-        Promise.reject(new Error('Target object was rejected and cannot be used for calls.'));
+        promise = Promise.reject(new Error('Target object was rejected and cannot be used for calls.'));
+        break;
+      case TargetStatus.DESTROYED:
+        promise = Promise.reject(new Error('Target object was destroyed and cannot be used for calls.'));
         break;
       case TargetStatus.RESOLVED:
         this._sendRequestHandler(pack, deferred);
         break;
     }
-    return new RequestTarget(deferred.promise, this._sendRequestHandler);
+    return new RequestTarget(promise, this._sendRequestHandler);
   }
 
   function _get(path) {
@@ -62,64 +59,156 @@ var RequestTarget = (function() {
     return this._sendRequest(CommandType.EXEC, command);
   }
 
+  function _isActive() {
+    return this.status === TargetStatus.PENDING || this.status === TargetStatus.RESOLVED;
+  }
+
   function _canBeDestroyed() {
-    return this._id && this._status === TargetStatus.RESOLVED;
+    return this.id && this.status === TargetStatus.RESOLVED;
   }
 
-  function _destroy() {
-    return this.canBeDestroyed() ? this._sendRequest(CommandType.DESTROY_TARGET) : Promise.reject();
-  }
-
-
-  function resolveHandler(value) {
-    this._status = TargetStatus.RESOLVED;
-    if (RequestTargetLink.isLink(value)) {
-      Object.defineProperties(this, {
-        _id: {
-          value: RequestTargetLink.getLinkId(value)
-        }
-      });
-      value = this;
-    }
-    this._sendQueue();
-    return value;
-  }
-
-  function rejectHandler(value) {
-    this._status = TargetStatus.REJECTED;
-    this._queue = null;
-    return value;
+  function _toJSON() {
+    return {
+      _targetLink_: {
+        id: this.id,
+        type: this.targetType,
+        poolId: this.poolId
+      }
+    };
   }
 
   /**
    * The object that will be available on other side
+   * IMPORTANT: Function target is temporary if queue contains single CALL command when target is resolved.
    * @param _promise
    * @param sendRequestHandler
    * @constructor
    */
   function RequestTarget(_promise, sendRequestHandler) {
-    //TODO Might be better to hide _queue and _status under get/set
+    var _this = this;
+    var _link;
+    var _temporary;
+    var _hadChildPromises = false;
+    var _status = TargetStatus.PENDING;
+    var _queue = [];
     Object.defineProperties(this, {
-      _queue: {
-        value: [],
-        writable: true
+      id: {
+        get: function() {
+          return _link ? _link.id : null;
+        }
       },
-      _status: {
-        value: TargetStatus.PENDING,
-        writable: true
+      targetType: {
+        get: function() {
+          return _link ? _link.type : null;
+        }
+      },
+      poolId: {
+        get: function() {
+          return _link ? _link.poolId : null;
+        }
+      },
+      temporary: {
+        get: function() {
+          return _temporary;
+        },
+        //INFO User can set permanent by hand
+        set: function(value) {
+          if (this.isActive()) {
+            _temporary = Boolean(value);
+            if (_status == TargetStatus.RESOLVED) {
+              this.destroy();
+            }
+          }
+        }
+      },
+      status: {
+        get: function() {
+          return _status;
+        }
       },
       _sendRequestHandler: {
         value: sendRequestHandler
       }
     });
 
-    _promise = _promise.then(
-      resolveHandler.bind(this),
-      rejectHandler.bind(this)
-    );
+    function _destroy() {
+      var promise = null;
+      if (_this.canBeDestroyed()) {
+        _status = TargetStatus.DESTROYED;
+        promise = _this._sendRequest(CommandType.DESTROY_TARGET);
+        /*TODO status must be set asap after call. There are no condition for it to be rejected, needs testing.
+         .then(function() {
+         _status = TargetStatus.DESTROYED;
+         });
+         */
+      } else {
+        promise = Promise.reject();
+      }
+      return promise;
+    }
 
-    this.then = _promise.then;
-    this.catch = _promise.catch;
+    function _resolveHandler(value) {
+      _status = TargetStatus.RESOLVED;
+      if (RequestTargetLink.isLink(value)) {
+        _link = RequestTargetLink.getLinkData(value);
+        if (typeof(_temporary) !== 'boolean') {
+          //And if child promise never returned, so it never used
+          //TODO Check if knowing that child promises were initiated helps to find out if its temporary.
+          if(data.type === 'function') {
+            /* TODO this case for Proxies, may be check for proxies support? this will work only if Proxies are enabled.
+             For functions, they are temporary only if they have only CALL command in queue and child promises never created.
+             This commonly means that this target was used for function call in proxy.
+             */
+            _temporary = _queue && _queue.length === 1 && _queue[0][0].type == CommandType.CALL && !_hadChildPromises;
+          }else{
+            /*
+             For any non-function target object, it will be marked as temporary only if has single item in request queue and child promises never created.
+             */
+            _temporary = (_queue && _queue.length === 1 && !_hadChildPromises);
+          }
+        }
+        if (_temporary) {
+          var destroy = _this.destroy().bind(_this);
+          //FIXME Get last item from queue, not first.
+          _queue[0][1].then(destroy, destroy);
+        }
+        value = _this;
+      }
+      _sendQueue();
+      return value;
+    }
+
+    function _sendQueue() {
+      while (_queue && _queue.length) {
+        var request = _queue.shift();
+        _this._sendRequestHandler(request[0], request[1]);
+      }
+      _queue = null;
+    }
+
+    function _rejectHandler(value) {
+      _status = TargetStatus.REJECTED;
+      _queue = null;
+      return value;
+    }
+
+    _promise = _promise.then(_resolveHandler, _rejectHandler);
+
+    this.then = function() {
+      var child = _promise.then.apply(_promise, arguments);
+      if (child) {
+        _hadChildPromises = true;
+      }
+      return child;
+    };
+    this.catch = function() {
+      var child = _promise.catch.apply(_promise, arguments);
+      if (child) {
+        _hadChildPromises = true;
+      }
+      return child;
+    };
+    this.destroy = _destroy;
   }
 
   RequestTarget.prototype.get = _get;
@@ -127,16 +216,9 @@ var RequestTarget = (function() {
   RequestTarget.prototype.call = _call;
   RequestTarget.prototype.execute = _execute;
   RequestTarget.prototype.canBeDestroyed = _canBeDestroyed;
-  RequestTarget.prototype.destroy = _destroy;
-
-  Object.defineProperties(RequestTarget.prototype, {
-    _sendQueue: {
-      value: _sendQueue
-    },
-    _sendRequest: {
-      value: _sendRequest
-    }
-  });
+  RequestTarget.prototype.isActive = _isActive;
+  RequestTarget.prototype.toJSON = _toJSON;
+  RequestTarget.prototype._sendRequest = _sendRequest;
 
   return RequestTarget;
 })();
@@ -145,8 +227,6 @@ var RequestTarget = (function() {
 var RequestTargetLink = (function() {
   /**
    * The object that can be used to send Target to other side
-   * @param _host
-   * @param _name
    * @constructor
    */
   function RequestTargetLink(_pool, _target, _id) {
@@ -172,7 +252,7 @@ var RequestTargetLink = (function() {
       }
     });
     this.destroy = function() {
-      if(!_active) return;
+      if (!_active) return;
       _active = false;
       _id = null;
       _pool = null;
@@ -200,9 +280,17 @@ var RequestTargetLink = (function() {
     };
   };
 
+  RequestTargetLink.getLinkData = function(object) {
+    var data;
+    if (RequestTargetLink.isLink(object)) {
+      data = object._targetLink_;
+    }
+    return data;
+  };
+
   RequestTargetLink.getLinkId = function(object) {
     var id;
-    if (typeof(object) === 'object' && object.hasOwnProperty('_targetLink_')) {
+    if (RequestTargetLink.isLink(object)) {
       id = object._targetLink_.id;
     }
     return id;
@@ -210,21 +298,28 @@ var RequestTargetLink = (function() {
 
   RequestTargetLink.getLinkPoolId = function(object) {
     var poolId;
-    if (typeof(object) === 'object' && object.hasOwnProperty('_targetLink_')) {
+    if (RequestTargetLink.isLink(object)) {
       poolId = object._targetLink_.poolId;
     }
     return poolId;
   };
 
+  RequestTargetLink.getLinkTargetType = function(object) {
+    var type;
+    if (RequestTargetLink.isLink(object)) {
+      type = object._targetLink_.type;
+    }
+    return type;
+  };
+
   RequestTargetLink.isLink = function(object) {
-    return typeof(object) === 'object' && object.hasOwnProperty('_targetLink_');
+    return typeof(object) === 'object' && typeof(object._targetLink_) === 'object' && object._targetLink_;
   };
 
   return RequestTargetLink;
 })();
 
 // TargetPool must have globally available instance, so many WorkerInterface instances can use it. Might be helpful for SharedWorker serve\r.
-//FIXME Find a way how to make temporary linkage for immediately called functions
 function TargetPool() {
   var _map = new Map();
   this.set = function(target) {

@@ -52,6 +52,7 @@ function unpackTargets(value) {
   }
 }
 
+//TODO If RequestTarget, RequestTargetLink or their proxies are passed, they should be converted to RAW links.
 function packTargets(data) {
   var result = data;
   if (typeof(data) && data !== null) {
