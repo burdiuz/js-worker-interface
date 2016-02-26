@@ -2,14 +2,6 @@
  * Created by Oleg Galaburda on 25.02.16.
  */
 var WorkerInterface = (function() {
-
-  function applyInterfaceAPI(target, proxy) {
-    proxy.get = target.get;
-    proxy.set = target.set;
-    proxy.call = target.call;
-    proxy.execute = target.execute;
-  }
-
   function createInterfaceDefinitionProxy(target) {
     return new Proxy(target, {
       construct: function(targetDefinition, args) {
@@ -21,11 +13,17 @@ var WorkerInterface = (function() {
 
   function createInterfaceProxy(target) {
     var proxy = createTargetPoolProxy(target);
+    /*FIXME In this case Proxy:set() method will be called, Need another way to setup properties. GET moethod canbe used with hasOwnProperty() or (name in target)
+    proxy.get = target.get;
+    proxy.set = target.set;
+    proxy.call = target.call;
+    proxy.execute = target.execute;
     proxy.addEventListener = target.addEventListener;
     proxy.hasEventListener = target.hasEventListener;
     proxy.removeEventListener = target.removeEventListener;
     proxy.removeAllEventListeners = target.removeAllEventListeners;
     proxy.dispatchEvent = target.dispatchEvent;
+    */
     Object.defineProperties(proxy, {
       pool: {
         get: function() {
@@ -34,6 +32,9 @@ var WorkerInterface = (function() {
         set: function(value) {
           return target.pool = value;
         }
+      },
+      target: {
+        value: target
       }
     });
     return proxy;
@@ -75,7 +76,6 @@ var WorkerInterface = (function() {
         return [];
       }
     });
-    applyInterfaceAPI(target, proxy);
     return proxy;
   }
 
@@ -87,6 +87,7 @@ var WorkerInterface = (function() {
     function WorkerInterface(importScriptURLs, type) {
       WorkerInterfaceBase.apply(this, arguments);
     }
+    definition = WorkerInterface;
   }
   Object.defineProperties(definition, {
     proxyEnabled: {

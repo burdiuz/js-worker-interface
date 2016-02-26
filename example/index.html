@@ -20,18 +20,32 @@
           src="../bower_components/messageport-dispatcher/dist/messageport-dispatcher.js"></script>
   <script type="text/javascript"
           src="../bower_components/worker-event-dispatcher/dist/worker-event-dispatcher.js"></script>
+  <script type="text/javascript" src="../source/interface/core.js"></script>
+  <script type="text/javascript" src="../source/interface/target-pool.js"></script>
   <script type="text/javascript" src="../source/interface/worker-interface.js"></script>
+  <script type="text/javascript" src="../source/interface/utils.js"></script>
+  <script type="text/javascript" src="../source/interface/proxy.js"></script>
+  <script type="text/javascript" src="../source/interface/shared-api.js"></script>
   <script type="text/javascript">
     // DedicatedWorker UI
     (function() {
 
       var api = new WorkerInterface('webworker.js');
-      api.pool.onInterfaceReady = function() {
-        console.log('Interface ready!');
-        api.call('requestTime').then(function() {
-          console.log(arguments);
+      console.log('Interface created', api.then);
+      api.then(function(obj) {
+        console.log('Interface ready!', obj);
+        api.get('requestTime').then(function(data) {
+          console.log('requestTime resolved', arguments);
+          data.target.call().then(function() {
+            console.log('requestTime called', arguments);
+          });
+          api.call('setHandler', data.target).then(function() {
+            console.log('setHandler called', arguments);
+          });
         });
-      };
+      });
+
+      return;
 
       $(document).ready(function() {
         $('.start').on('click', function(event) {
@@ -39,16 +53,6 @@
         });
         $('.stop').on('click', function(event) {
           controller.stop();
-        });
-      });
-    })();
-  </script>
-  <script type="text/javascript">
-    // SharedWorker UI
-    (function() {
-      $(document).ready(function() {
-        $('.create-shared').on('click', function(event) {
-          window.open('sharedworker_ui.html', '_blank');
         });
       });
     })();

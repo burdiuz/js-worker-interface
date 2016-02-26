@@ -48,8 +48,3 @@ function isStandalone() {
 function create(importScriptURLs) {
   return new WorkerInterface(importScriptURLs, WorkerInterface.DEDICATED);
 }
-
-WorkerInterface.create = create;
-WorkerInterface.isStandalone = isStandalone;
-WorkerInterface.generateBlob = generateBlob;
-WorkerInterface.fullImportScriptURL = fullImportScriptURL;

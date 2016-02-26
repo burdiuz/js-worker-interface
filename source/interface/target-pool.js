@@ -97,6 +97,11 @@ var RequestTarget = (function() {
           return _link ? _link.id : null;
         }
       },
+      target: {
+        get: function() {
+          return _this;
+        }
+      },
       targetType: {
         get: function() {
           return _link ? _link.type : null;
@@ -128,6 +133,9 @@ var RequestTarget = (function() {
       },
       _sendRequestHandler: {
         value: sendRequestHandler
+      },
+      _targetLink_: {
+        value: this
       }
     });
 
@@ -136,7 +144,7 @@ var RequestTarget = (function() {
       if (_this.canBeDestroyed()) {
         _status = TargetStatus.DESTROYED;
         promise = _this._sendRequest(CommandType.DESTROY_TARGET);
-        /*TODO status must be set asap after call. There are no condition for it to be rejected, needs testing.
+        /*INFO status must be set asap after call, so no calls are accepted. There are no condition for it to be rejected, needs testing.
          .then(function() {
          _status = TargetStatus.DESTROYED;
          });
@@ -154,13 +162,13 @@ var RequestTarget = (function() {
         if (typeof(_temporary) !== 'boolean') {
           //And if child promise never returned, so it never used
           //TODO Check if knowing that child promises were initiated helps to find out if its temporary.
-          if(data.type === 'function') {
+          if (RequestTargetLink.getLinkTargetType(value) === 'function') {
             /* TODO this case for Proxies, may be check for proxies support? this will work only if Proxies are enabled.
              For functions, they are temporary only if they have only CALL command in queue and child promises never created.
              This commonly means that this target was used for function call in proxy.
              */
             _temporary = _queue && _queue.length === 1 && _queue[0][0].type == CommandType.CALL && !_hadChildPromises;
-          }else{
+          } else {
             /*
              For any non-function target object, it will be marked as temporary only if has single item in request queue and child promises never created.
              */
@@ -169,10 +177,10 @@ var RequestTarget = (function() {
         }
         if (_temporary) {
           var destroy = _this.destroy().bind(_this);
-          //FIXME Get last item from queue, not first.
-          _queue[0][1].then(destroy, destroy);
+          _queue[_queue.length-1][1].then(destroy, destroy);
         }
-        value = _this;
+        //INFO Sending "this" as result of promise resolve causes infinite loop of this.then(), so I've used wrapper object
+        value = {target: _this};
       }
       _sendQueue();
       return value;
@@ -188,14 +196,18 @@ var RequestTarget = (function() {
 
     function _rejectHandler(value) {
       _status = TargetStatus.REJECTED;
+      while (_queue && _queue.length) {
+        var request = _queue.shift();
+        request[1].reject(new Error('Target of the call was rejected and callcannot be sent.'));
+      }
       _queue = null;
       return value;
     }
 
     _promise = _promise.then(_resolveHandler, _rejectHandler);
-
-    this.then = function() {
-      var child = _promise.then.apply(_promise, arguments);
+    this.then = function(success, fail) {
+      var child = _promise.then(success, fail);
+      //var child = _promise.then.apply(_promise, arguments);
       if (child) {
         _hadChildPromises = true;
       }
@@ -374,9 +386,15 @@ function TargetPool() {
   });
 }
 
-TargetPool.isValidTarget = function(target) {
-  return target && typeof(target) === 'object';
-};
+TargetPool.isValidTarget = (function(){
+  var valid = {
+    'object': true,
+    'function': true
+  };
+  return function(target) {
+    return target && valid[typeof(target)];
+  };
+})();
 
 Object.defineProperties(TargetPool, {
   instance: {

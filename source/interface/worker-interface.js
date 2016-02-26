@@ -2,8 +2,6 @@
  * Created by Oleg Galaburda on 25.02.16.
  */
 
-//FIXME merge TargetPool and WorkerInterface common API
-//FIXME replace interfaceReady/onInterfaceReady with .promise
 function WorkerInterfaceBase(importScriptURL, type) {
   var _this = this;
   var _dispatcher = null;
@@ -14,13 +12,13 @@ function WorkerInterfaceBase(importScriptURL, type) {
    */
   if (importScriptURL) {
     if (isStandalone()) {
-      _dispatcher = WorkerEventDispatcher.create(generateWorkerBlobData(importScriptURL), type || WorkerInterface.DEDICATED);
+      _dispatcher = WorkerEventDispatcher.create(generateWorkerBlobData(importScriptURL), type || WorkerInterface.DEDICATED, receiverEventPreprocessor, senderEventPreprocessor);
     } else {
-      _dispatcher = WorkerEventDispatcher.create(importScriptURL, type || WorkerInterface.DEDICATED);
+      _dispatcher = WorkerEventDispatcher.create(importScriptURL, type || WorkerInterface.DEDICATED, receiverEventPreprocessor, senderEventPreprocessor);
     }
     _dispatcher.addEventListener(Events.READY_EVENT, readyEventHandler);
   } else {
-    _dispatcher = WorkerEventDispatcher.self();
+    _dispatcher = WorkerEventDispatcher.self(receiverEventPreprocessor, senderEventPreprocessor);
     _dispatcher.dispatchEvent(Events.READY_EVENT);
     readyEventHandler();
   }
@@ -82,9 +80,32 @@ function WorkerInterfaceBase(importScriptURL, type) {
     }
   }
 
+  function receiverEventPreprocessor(event) {
+    /* INFO Regenerate event since data might be read-only? Might be data loss in case of inocrrent cloning
+     event.data = DataConverter.prepareToReceive(event.data);
+     return event;
+     */
+    return {
+      type: event.type,
+      data: DataConverter.prepareToReceive(event.data, sendRequest)
+    };
+  }
+
+  function senderEventPreprocessor(event) {
+    /* INFO Regenerate event since data might be read-only? Might be data loss in case of inocrrent cloning
+     event.data = DataConverter.prepareToSend(event.data);
+     return event;
+     */
+    return {
+      type: event.type,
+      data: DataConverter.prepareToSend(event.data)
+    };
+  }
+
   function sendRequest(pack, deferred) {
     var id = getId();
     pack.id = id;
+    pack.value = DataConverter.prepareToSend(pack.value);
     deferred = deferred || createDeferred(id);
     _requests[id] = deferred;
     _dispatcher.dispatchEvent(Events.REQUEST_EVENT, pack);
@@ -127,10 +148,3 @@ function WorkerInterfaceBase(importScriptURL, type) {
   _dispatcher.addEventListener(Events.REQUEST_EVENT, requestEventHandler);
   _dispatcher.addEventListener(Events.RESPONSE_EVENT, responseEventHandler);
 }
-
-WorkerInterface.DEDICATED = WorkerEventDispatcher.WorkerType.DEDICATED_WORKER;
-// Shared workers are not supported yet
-//WorkerInterface.SHARED = WorkerEventDispatcher.WorkerType.SHARED_WORKER;
-WorkerInterface.READY_EVENT = Events.READY_EVENT;
-WorkerInterface.READY_HANDLER = 'onInterfaceReady';
-WorkerInterface.WorkerEventDispatcher = WorkerEventDispatcher;
