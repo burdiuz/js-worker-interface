@@ -35,21 +35,19 @@ function WorkerInterfaceBase(importScriptURL, type) {
   }
 
   function requestEventHandler(event) {
-    console.log(' - requestEventHandler', event);
     var result, target;
     var data = event.data;  // {type:string, id:string, cmd:string, value:any, target: string
-//    try {
-    target = data.target ? TargetPool.instance.get(data.target) : _pool;
-    // data.value should be preprocessed in evaluateRequest
-    result = evaluateRequest(data.type, data.cmd, data.value, target);
-    /*    } catch (error) {
-     sendResponse({
-     name: error.name,
-     message: error.message
-     }, ResponseTypes.RESULT_FAILURE, data.id);
-     throw error;
-     }
-     */
+    try {
+      target = data.target ? TargetPool.instance.get(data.target) : _pool;
+      // data.value should be preprocessed in evaluateRequest
+      result = evaluateRequest(data.type, data.cmd, data.value, target);
+    } catch (error) {
+      sendResponse({
+        name: error.name,
+        message: error.message
+      }, ResponseTypes.RESULT_FAILURE, data.id);
+      throw error;
+    }
     if (result instanceof Promise) {
       handlePromiseResponse(result, data.id);
     } else {
@@ -69,7 +67,6 @@ function WorkerInterfaceBase(importScriptURL, type) {
   }
 
   function responseEventHandler(event) {
-    console.log(' - responseEventHandler', event);
     var data = event.data; // {type:string, id:string, value:any}
     var deferred = _requests[data.id];
     delete _requests[data.id];
@@ -87,7 +84,6 @@ function WorkerInterfaceBase(importScriptURL, type) {
   }
 
   function receiverEventPreprocessor(event) {
-    console.log(' -- receiverEventPreprocessor', event);
     /* INFO Regenerate event since data might be read-only? Might be data loss in case of inocrrent cloning
      event.data = DataConverter.prepareToReceive(event.data);
      return event;
@@ -102,7 +98,6 @@ function WorkerInterfaceBase(importScriptURL, type) {
   }
 
   function senderEventPreprocessor(event) {
-    console.log(' -- senderEventPreprocessor', event);
     /* INFO Regenerate event since data might be read-only? Might be data loss in case of inocrrent cloning
      event.data = DataConverter.prepareToSend(event.data);
      return event;

@@ -10,7 +10,6 @@ var WorkerInterface = (function() {
       function createHandlers(exclustions) {
         return {
           'get': function(wrapper, name) {
-            console.log('Proxy.GET', name, wrapper);
             var value;
             if (exclustions[name]) {
               value = wrapper.target[name];
@@ -27,7 +26,6 @@ var WorkerInterface = (function() {
             return value;
           },
           'apply': function(wrapper, thisValue, args) {
-            console.log('Proxy.APPLY', wrapper.target, args);
             return createRequestTargetProxy(wrapper.target.call(null, args));
           },
           'set': function(wrapper, name, value) {
@@ -81,7 +79,6 @@ var WorkerInterface = (function() {
       return new Proxy(WorkerInterfaceBase, {
         'construct': function(targetDefinition, args) {
           var target = new targetDefinition(args[0], args[1], args[2], args[3]); // new WorkerInterfaceBase(...args);
-          console.log('Create Worker Interface', args);
           //INFO targetWrapper needs for "apply" interceptor, it works only for functions as target
           function targetWrapper() {
             return target;

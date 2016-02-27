@@ -163,7 +163,6 @@ var RequestTarget = (function() {
 
     function _resolveHandler(value) {
       _status = TargetStatus.RESOLVED;
-      console.log('### RESOLVED', value);
       if (RequestTargetLink.isLink(value)) {
         _link = RequestTargetLink.getLinkData(value);
         if (typeof(_temporary) !== 'boolean') {

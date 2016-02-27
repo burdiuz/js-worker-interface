@@ -153,7 +153,6 @@ var DataConverter = (function() {
 })();
 
 function evaluateRequest(type, cmd, value, target) {
-  console.log(' >>> ', type, cmd, value, target);
   var handler, result = undefined;
   switch (type) {
     case CommandType.CALL:
