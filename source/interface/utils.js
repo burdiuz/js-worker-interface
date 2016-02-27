@@ -44,7 +44,3 @@ function fullImportScriptURL(path) {
 function isStandalone() {
   return typeof Scripts !== 'undefined' && Scripts.hasOwnProperty('SELF_SRC');
 };
-
-function create(importScriptURLs) {
-  return new WorkerInterface(importScriptURLs, WorkerInterface.DEDICATED);
-}

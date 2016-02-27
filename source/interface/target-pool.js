@@ -23,7 +23,7 @@ var RequestTarget = (function() {
     var promise = deferred.promise;
     switch (this.status) {
       case TargetStatus.PENDING:
-        this._queue.push([pack, deferred]);
+        this._addToQueue(pack, deferred);
         break;
       case TargetStatus.REJECTED:
         promise = Promise.reject(new Error('Target object was rejected and cannot be used for calls.'));
@@ -91,11 +91,13 @@ var RequestTarget = (function() {
     var _hadChildPromises = false;
     var _status = TargetStatus.PENDING;
     var _queue = [];
+
     Object.defineProperties(this, {
       id: {
         get: function() {
           return _link ? _link.id : null;
-        }
+        },
+        configurable: true
       },
       target: {
         get: function() {
@@ -105,18 +107,20 @@ var RequestTarget = (function() {
       targetType: {
         get: function() {
           return _link ? _link.type : null;
-        }
+        },
+        configurable: true
       },
       poolId: {
         get: function() {
           return _link ? _link.poolId : null;
-        }
+        },
+        configurable: true
       },
       temporary: {
         get: function() {
           return _temporary;
         },
-        //INFO User can set permanent by hand
+        //INFO User can set permanent/temporary by hand
         set: function(value) {
           if (this.isActive()) {
             _temporary = Boolean(value);
@@ -129,10 +133,12 @@ var RequestTarget = (function() {
       status: {
         get: function() {
           return _status;
-        }
+        },
+        configurable: true
       },
       _sendRequestHandler: {
-        value: sendRequestHandler
+        value: sendRequestHandler,
+        configurable: true
       },
       _targetLink_: {
         value: this
@@ -157,6 +163,7 @@ var RequestTarget = (function() {
 
     function _resolveHandler(value) {
       _status = TargetStatus.RESOLVED;
+      console.log('### RESOLVED', value);
       if (RequestTargetLink.isLink(value)) {
         _link = RequestTargetLink.getLinkData(value);
         if (typeof(_temporary) !== 'boolean') {
@@ -176,8 +183,7 @@ var RequestTarget = (function() {
           }
         }
         if (_temporary) {
-          var destroy = _this.destroy().bind(_this);
-          _queue[_queue.length-1][1].then(destroy, destroy);
+          _queue[_queue.length - 1][1].promise.then(_destroy, _destroy);
         }
         //INFO Sending "this" as result of promise resolve causes infinite loop of this.then(), so I've used wrapper object
         value = {target: _this};
@@ -189,7 +195,10 @@ var RequestTarget = (function() {
     function _sendQueue() {
       while (_queue && _queue.length) {
         var request = _queue.shift();
-        _this._sendRequestHandler(request[0], request[1]);
+        var pack = request[0];
+        var deferred = request[1];
+        pack.target = _link.id;
+        _this._sendRequestHandler(pack, deferred);
       }
       _queue = null;
     }
@@ -204,22 +213,32 @@ var RequestTarget = (function() {
       return value;
     }
 
-    _promise = _promise.then(_resolveHandler, _rejectHandler);
-    this.then = function(success, fail) {
+    function _then(success, fail) {
       var child = _promise.then(success, fail);
       //var child = _promise.then.apply(_promise, arguments);
       if (child) {
         _hadChildPromises = true;
       }
       return child;
-    };
-    this.catch = function() {
+    }
+
+    function _catch() {
       var child = _promise.catch.apply(_promise, arguments);
       if (child) {
         _hadChildPromises = true;
       }
       return child;
-    };
+    }
+
+    function _addToQueue(pack, deferred) {
+      _queue.push([pack, deferred]);
+    }
+
+    _promise = _promise.then(_resolveHandler, _rejectHandler);
+
+    this._addToQueue = _addToQueue;
+    this.then = _then;
+    this.catch = _catch;
     this.destroy = _destroy;
   }
 
@@ -386,7 +405,7 @@ function TargetPool() {
   });
 }
 
-TargetPool.isValidTarget = (function(){
+TargetPool.isValidTarget = (function() {
   var valid = {
     'object': true,
     'function': true

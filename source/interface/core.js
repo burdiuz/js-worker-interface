@@ -13,7 +13,12 @@ var CommandType = {
 var Events = {
   READY_EVENT: '~WI:Ready',
   REQUEST_EVENT: '~WI:Request',
-  RESPONSE_EVENT: '~WI:Response'
+  RESPONSE_EVENT: '~WI:Response',
+  internals: {
+    '~WI:Ready': true,
+    '~WI:Request': true,
+    '~WI:Response': true
+  }
 };
 
 var ResponseTypes = {
@@ -148,6 +153,7 @@ var DataConverter = (function() {
 })();
 
 function evaluateRequest(type, cmd, value, target) {
+  console.log(' >>> ', type, cmd, value, target);
   var handler, result = undefined;
   switch (type) {
     case CommandType.CALL:

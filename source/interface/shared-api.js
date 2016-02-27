@@ -2,6 +2,10 @@
  * Created by Oleg Galaburda on 26.02.16.
  */
 
+function create(importScriptURLs) {
+  return new WorkerInterface(importScriptURLs, WorkerInterface.DEDICATED);
+}
+
 WorkerInterface.create = create;
 WorkerInterface.isStandalone = isStandalone;
 WorkerInterface.generateBlob = generateBlob;

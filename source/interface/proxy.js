@@ -2,98 +2,107 @@
  * Created by Oleg Galaburda on 25.02.16.
  */
 var WorkerInterface = (function() {
-  function createInterfaceDefinitionProxy(target) {
-    return new Proxy(target, {
-      construct: function(targetDefinition, args) {
-        var target = new WorkerInterfaceBase(args[0], args[1], args[2], args[3]); // new WorkerInterfaceBase(...args);
-        return createInterfaceProxy(target);
-      }
-    });
-  }
-
-  function createInterfaceProxy(target) {
-    var proxy = createTargetPoolProxy(target);
-    /*FIXME In this case Proxy:set() method will be called, Need another way to setup properties. GET moethod canbe used with hasOwnProperty() or (name in target)
-    proxy.get = target.get;
-    proxy.set = target.set;
-    proxy.call = target.call;
-    proxy.execute = target.execute;
-    proxy.addEventListener = target.addEventListener;
-    proxy.hasEventListener = target.hasEventListener;
-    proxy.removeEventListener = target.removeEventListener;
-    proxy.removeAllEventListeners = target.removeAllEventListeners;
-    proxy.dispatchEvent = target.dispatchEvent;
-    */
-    Object.defineProperties(proxy, {
-      pool: {
-        get: function() {
-          return target.pool;
-        },
-        set: function(value) {
-          return target.pool = value;
-        }
-      },
-      target: {
-        value: target
-      }
-    });
-    return proxy;
-  }
-
-  function createTargetPoolProxy(target) {
-    var proxy = new Proxy(target, {
-      /**
-       * To make function calls real
-       * 1. Return promise
-       * 2. use TargetPool to register selected function
-       * 3.
-       * @param target
-       * @param name
-       * @param receiver
-       * @returns {*}
-       */
-      get: function(target, name, receiver) {
-        return target.get(name).then(function(value) {
-          if(value instanceof TargetPool){
-            return createTargetPoolProxy(value);
-          }
-        });
-      },
-      apply: function(target, thisValue, args) {
-        // FIXME call without name means call should be applied to target, so if target is function it should be called.
-        return target.call(null, args);
-      },
-      set: function(target, name, value, receiver) {
-        return target.set(name, value);
-      },
-      has: function(target, name) {
-        return false;
-      },
-      deleteProperty: function(target, name) {
-        return false;
-      },
-      ownKeys: function(target) {
-        return [];
-      }
-    });
-    return proxy;
-  }
-
   var definition = null;
-  var proxyEnabled = typeof(Proxy) === 'function';
-  if (proxyEnabled) {
-    definition = createInterfaceProxy(WorkerInterfaceBase);
+  if (typeof(Proxy) === 'function') {
+
+    definition = (function() {
+
+      function createHandlers(exclustions) {
+        return {
+          'get': function(wrapper, name) {
+            console.log('Proxy.GET', name, wrapper);
+            var value;
+            if (exclustions[name]) {
+              value = wrapper.target[name];
+            } else {
+              var child = wrapper.target.get(name);
+
+              function childTargetWrapper() {
+                return child;
+              }
+
+              childTargetWrapper.target = child;
+              value = createRequestTargetProxy(childTargetWrapper);
+            }
+            return value;
+          },
+          'apply': function(wrapper, thisValue, args) {
+            console.log('Proxy.APPLY', wrapper.target, args);
+            return createRequestTargetProxy(wrapper.target.call(null, args));
+          },
+          'set': function(wrapper, name, value) {
+            var result;
+            if (exclustions[name]) {
+              result = wrapper.target[name] = value;
+            } else {
+              result = wrapper.target.set(name, value);
+            }
+            return result;
+          },
+          'has': function(wrapper, name) {
+            return Boolean(exclustions[name]);
+          },
+          'deleteProperty': function(wrapper, name) {
+            return false;
+          },
+          'ownKeys': function(wrapper) {
+            return [];
+          }
+        };
+      }
+
+      var RequestTargetAllowed = {
+        'target': true,
+        'then': true,
+        'catch': true,
+        '_targetLink_': true
+      };
+
+      var RequestTargetHandlers = createHandlers(RequestTargetAllowed);
+
+      var WorkerInterfaceAllowed = {
+        'get': true,
+        'set': true,
+        'call': true,
+        'execute': true,
+        'target': true,
+        'dispatcher': true,
+        'then': true,
+        'catch': true,
+        'pool': true
+      };
+
+      var WorkerInterfaceHandlers = createHandlers(WorkerInterfaceAllowed);
+
+      function createRequestTargetProxy(wrapper) {
+        return new Proxy(wrapper, RequestTargetHandlers);
+      }
+
+      return new Proxy(WorkerInterfaceBase, {
+        'construct': function(targetDefinition, args) {
+          var target = new targetDefinition(args[0], args[1], args[2], args[3]); // new WorkerInterfaceBase(...args);
+          console.log('Create Worker Interface', args);
+          //INFO targetWrapper needs for "apply" interceptor, it works only for functions as target
+          function targetWrapper() {
+            return target;
+          }
+
+          targetWrapper.target = target;
+          return new Proxy(targetWrapper, WorkerInterfaceHandlers);
+        },
+        'get': function(target, name) {
+          return target[name];
+        },
+      });
+    })();
+    Object.defineProperties(definition, {
+      proxyEnabled: {
+        value: true
+      }
+    });
   } else {
-    function WorkerInterface(importScriptURLs, type) {
-      WorkerInterfaceBase.apply(this, arguments);
-    }
+    //=include base-interface.js
     definition = WorkerInterface;
   }
-  Object.defineProperties(definition, {
-    proxyEnabled: {
-      value: proxyEnabled
-    }
-  });
   return definition;
-})
-();
+})();
