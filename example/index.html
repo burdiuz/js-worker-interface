@@ -20,12 +20,12 @@
           src="../bower_components/messageport-dispatcher/dist/messageport-dispatcher.js"></script>
   <script type="text/javascript"
           src="../bower_components/worker-event-dispatcher/dist/worker-event-dispatcher.js"></script>
-  <script type="text/javascript" src="../dist/worker-interface.standalone.js"></script>
+  <script type="text/javascript" src="../dist/worker-interface.js"></script>
   <script type="text/javascript">
     // DedicatedWorker UI
     (function() {
 
-      var api = new WorkerInterface('webworker.standalone.js');
+      var api = new WorkerInterface('webworker.js');
       console.log('Interface created', api);
       api.get('callHandler').call(null, api.get('requestTime')).then(function(data) {
         console.log('setHandler called', arguments);
