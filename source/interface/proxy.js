@@ -48,7 +48,7 @@ var WorkerInterface = (function() {
           }
         };
       }
-
+      // Look if toJSON should be added to allowed
       var RequestTargetAllowed = {
         'target': true,
         'then': true,

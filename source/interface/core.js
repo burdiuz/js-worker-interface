@@ -63,7 +63,7 @@ var DataConverter = (function() {
     var poolId = RequestTargetLink.getLinkPoolId(data);
     if (poolId === TargetPool.instance.id) { // target object is stored in current pool
       data = TargetPool.instance.get(RequestTargetLink.getLinkId(data));
-      if(data) {
+      if (data) {
         data = data.target;
       }
     } else { // target object has another origin, should be wrapped
@@ -126,15 +126,14 @@ var DataConverter = (function() {
 
   function convertFromRaw(data, sendRequestHandler) {
     var result = data;
-    if (typeof(data) !== 'object' || data === null) {
-      return result;
-    }
-    if (RequestTargetLink.isLink(data)) { // if data is link
-      result = convertRawToRequestTarget(data, sendRequestHandler);
-    } else if (data instanceof Array) { // if data is Array of values, check its
-      result = convertArrayTo(data, convertRawToRequestTarget, sendRequestHandler);
-    } else if (data.constructor === Object) {
-      result = convertHashTo(data, convertRawToRequestTarget, sendRequestHandler);
+    if (dataType === 'object' && data !== null) {
+      if (RequestTargetLink.isLink(data)) { // if data is link
+        result = convertRawToRequestTarget(data, sendRequestHandler);
+      } else if (data instanceof Array) { // if data is Array of values, check its
+        result = convertArrayTo(data, convertRawToRequestTarget, sendRequestHandler);
+      } else if (data.constructor === Object) {
+        result = convertHashTo(data, convertRawToRequestTarget, sendRequestHandler);
+      }
     }
     return result;
   }
@@ -146,9 +145,34 @@ var DataConverter = (function() {
     return data;
   }
 
+  function isPending(value) {
+    return value instanceof RequestTarget && value.target.status == TargetStatus.PENDING;
+  }
+
+  function lookupForPending(data) {
+    var result = [];
+    if (typeof(data) === 'object' && data !== null) {
+      function add(value) {
+        if (isPending(value)) {
+          result.push(value);
+        }
+        return value;
+      }
+    }
+    if (isPending(data)) {
+      result.push(data);
+    } else if (data instanceof Array) {
+      result = convertArrayTo(data, add);
+    } else if (data.constructor === Object) {
+      result = convertHashTo(data, add);
+    }
+    return result;
+  }
+
   return {
     prepareToSend: prepareToSend,
-    prepareToReceive: prepareToReceive
+    prepareToReceive: prepareToReceive,
+    lookupFor: lookupForPending
   };
 })();
 

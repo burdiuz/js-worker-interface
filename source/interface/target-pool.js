@@ -8,18 +8,21 @@ var TargetStatus = {
   REJECTED: 'rejected',
   DESTROYED: 'destroyed'
 };
-
-//FIXME provide way to return RequestTarget back to worker, it should transform to original value when received
+//FIXME Make an internal class of objects that will hold all of internal functionality & data of the RequestTarget and will never be exposed to public
+// RequestTarget<>-------RequestTargetInternals
+// This will help by moving all of RequestTarget internal methods to RequestTargetInternals prototype
 var RequestTarget = (function() {
 
-  function _sendRequest(type, cmd, value) {
-    var pack = {
+  function _createRequestPackage(type, cmd, value, targetId) {
+    return pack = {
       type: type,
       cmd: cmd,
       value: value,
-      target: this.id
+      target: targetId
     };
-    var deferred = createDeferred();
+  }
+
+  function _applyRequest(pack, deferred) {
     var promise = deferred.promise;
     switch (this.status) {
       case TargetStatus.PENDING:
@@ -35,6 +38,12 @@ var RequestTarget = (function() {
         this._sendRequestHandler(pack, deferred);
         break;
     }
+    return promise;
+  }
+
+  function _sendRequest(type, cmd, value) {
+    var pack = _createRequestPackage(type, cmd, value, this.id);
+    var promise = _applyRequest(pack, createDeferred());
     return new RequestTarget(promise, this._sendRequestHandler);
   }
 
@@ -150,37 +159,33 @@ var RequestTarget = (function() {
       if (_this.canBeDestroyed()) {
         _status = TargetStatus.DESTROYED;
         promise = _this._sendRequest(CommandType.DESTROY_TARGET);
-        /*INFO status must be set asap after call, so no calls are accepted. There are no condition for it to be rejected, needs testing.
-         .then(function() {
-         _status = TargetStatus.DESTROYED;
-         });
-         */
       } else {
         promise = Promise.reject();
       }
       return promise;
     }
 
+    function _isTemporary() {
+      /* TODO this case for Proxies, may be check for proxies support? this will work only if Proxies are enabled.
+       For functions, they are temporary only if they have only CALL command in queue and child promises never created -- this commonly means that this target was used for function call in proxy.
+       For any non-function target object, it will be marked as temporary only if has single item in request queue and child promises never created.
+       */
+      var temp = _temporary;
+      if (typeof(temp) !== 'boolean') {
+        if (RequestTargetLink.getLinkTargetType(value) === 'function') {
+          temp = _queue && _queue.length === 1 && _queue[0][0].type == CommandType.CALL && !_hadChildPromises;
+        } else {
+          temp = (_queue && _queue.length === 1 && !_hadChildPromises);
+        }
+      }
+      return temp;
+    }
+
     function _resolveHandler(value) {
       _status = TargetStatus.RESOLVED;
       if (RequestTargetLink.isLink(value)) {
         _link = RequestTargetLink.getLinkData(value);
-        if (typeof(_temporary) !== 'boolean') {
-          //And if child promise never returned, so it never used
-          //TODO Check if knowing that child promises were initiated helps to find out if its temporary.
-          if (RequestTargetLink.getLinkTargetType(value) === 'function') {
-            /* TODO this case for Proxies, may be check for proxies support? this will work only if Proxies are enabled.
-             For functions, they are temporary only if they have only CALL command in queue and child promises never created.
-             This commonly means that this target was used for function call in proxy.
-             */
-            _temporary = _queue && _queue.length === 1 && _queue[0][0].type == CommandType.CALL && !_hadChildPromises;
-          } else {
-            /*
-             For any non-function target object, it will be marked as temporary only if has single item in request queue and child promises never created.
-             */
-            _temporary = (_queue && _queue.length === 1 && !_hadChildPromises);
-          }
-        }
+        _temporary = _isTemporary();
         if (_temporary) {
           _queue[_queue.length - 1][1].promise.then(_destroy, _destroy);
         }
