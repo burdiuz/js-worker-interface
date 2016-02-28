@@ -1,7 +1,7 @@
 {
   "name": "worker-interface",
   "description": "WorkerInterface based on WorkerEventDispatcher is extension to Web Workers interface.",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "main": "dist/worker-interface.min.js",
   "keywords": [
     "events",
@@ -32,6 +32,8 @@
     "gulp": "^3.9.0",
     "gulp-include": "^2.1.0",
     "gulp-rename": "^1.2.2",
+    "gulp-string-inject": "git://github.com/burdiuz/gulp-string-inject.git",
+    "gulp-strip-comments": "^2.2.1",
     "gulp-uglify": "^1.5.1",
     "karma": "^0.13.16",
     "karma-coverage": "^0.5.3",
@@ -43,8 +45,7 @@
     "mocha": "^2.4.5",
     "phantomjs": "^1.9",
     "sinon": "^1.17.3",
-    "sinon-chai": "^2.8.0",
-    "gulp-string-inject": "git://github.com/burdiuz/gulp-string-inject.git"
+    "sinon-chai": "^2.8.0"
   },
   "scripts": {
     "test": "./node_modules/.bin/karma start --single-run --browsers PhantomJS karma.conf.js"

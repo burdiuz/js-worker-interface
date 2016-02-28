@@ -4,50 +4,92 @@
 var fs = require('fs');
 var gulp = require('gulp');
 var uglify = require('gulp-uglify');
-var stringInject = require('gulp-string-inject');
 var rename = require('gulp-rename');
 var include = require('gulp-include');
+var stringInject = require('gulp-string-inject');
 
-gulp.task('compile', function(callback) {
-  gulp.src('source/worker-interface.js')
-    // create concatenated file
+// --------- Build Normal
+gulp.task('normal-compile', function(callback) {
+  gulp.src('source/master.js')
     .pipe(include())
     .pipe(rename('worker-interface.temp.js'))
     .pipe(gulp.dest('.'))
     .on('finish', function() {
-      console.log('compile done!');
       callback();
     });
+
 });
-gulp.task('prepare-master', ['compile'], function(callback) {
-  gulp.src('source/worker-master.js')
-    // create concatenated file
-    .pipe(stringInject(stringInject.UGLIFY))
-    .pipe(rename('worker-master.temp.js'))
-    .pipe(gulp.dest('.'))
-    .on('finish', function() {
-      console.log('prepare-master done!');
-      callback();
-    });
-});
-gulp.task('clear-temp', ['build'], function() {
-  fs.unlink('./worker-interface.temp.js');
-  fs.unlink('./worker-master.temp.js');
-});
-gulp.task('build', ['prepare-master'], function(callback) {
+gulp.task('normal-build', ['normal-compile'], function(callback) {
   gulp.src('source/worker-interface-umd.js')
-    // create concatenated file
     .pipe(include())
     .pipe(rename('worker-interface.js'))
-    .pipe(gulp.dest('dist'))
-    // create minified version
+    .pipe(gulp.dest('./dist'))
+// --------- Build Normal Min
     .pipe(uglify())
     .pipe(rename({suffix: '.min'}))
     .pipe(gulp.dest('dist'))
     .on('finish', function() {
-      console.log('build done!');
       callback();
     });
 });
+// --------- Build Standalone
+gulp.task('standalone-dependencies', function(callback) {
+  gulp.src('source/standalone/dependencies.js')
+    // create concatenated file
+    .pipe(include())
+    .pipe(rename('dependencies.temp.js'))
+    .pipe(gulp.dest('.'))
+    .on('finish', function() {
+      callback();
+    });
+});
+gulp.task('standalone-compile', ['standalone-dependencies', 'normal-compile'], function(callback) {
+  gulp.src('source/standalone/master.js')
+    .pipe(stringInject())
+    .pipe(include())
+    .pipe(rename('standalone-master.temp.js'))
+    .pipe(gulp.dest('.'))
+    .on('finish', function() {
+      callback();
+    });
+});
+gulp.task('standalone-build', ['standalone-compile'], function(callback) {
+  gulp.src('source/standalone/worker-interface-umd.js')
+    // create concatenated file
+    .pipe(rename('worker-interface.standalone.js'))
+    .pipe(include())
+    .pipe(gulp.dest('./dist'))
+    .on('finish', function() {
+      callback();
+    });
+});
+// --------- Build Standalone Min
+gulp.task('standalone-compile-min', ['standalone-dependencies', 'normal-compile'], function(callback) {
+  gulp.src('source/standalone/master.js')
+    .pipe(stringInject(stringInject.UGLIFY))
+    .pipe(include())
+    .pipe(rename('standalone-master.temp.js'))
+    .pipe(gulp.dest('.'))
+    .on('finish', function() {
+      callback();
+    });
+});
+gulp.task('standalone-build-min', ['standalone-compile-min'], function(callback) {
+  gulp.src('source/standalone/worker-interface-umd.js')
+    // create concatenated file
+    .pipe(include())
+    .pipe(uglify())
+    .pipe(rename('worker-interface.standalone.min.js'))
+    .pipe(gulp.dest('./dist'))
+    .on('finish', function() {
+      callback();
+    });
+});
+// ---------
+gulp.task('clear-temp', ['standalone-build'], function() {
+  fs.unlink('./worker-interface.temp.js');
+  fs.unlink('./standalone-master.temp.js');
+  fs.unlink('./dependencies.temp.js');
+});
 
-gulp.task('default', ['compile', 'prepare-master', 'build', 'clear-temp']);
+gulp.task('default', ['normal-build', 'standalone-build', 'standalone-build-min', 'clear-temp']);

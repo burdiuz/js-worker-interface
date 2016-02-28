@@ -3,8 +3,8 @@
  */
 
 var Scripts = {
-  DEPS_SRC: {$= ../worker-interface-deps.temp.js},
-  INTERFACE_SRC: {$= worker-interface.js},
-  SELF_SRC: {$= worker-self.js}
+  DEPS_SRC: {$= ../../dependencies.temp.js},
+  INTERFACE_SRC: {$= ../../worker-interface.temp.js},
+  SELF_SRC: {$= self.js}
 };
 eval(Scripts.DEPS_SRC + Scripts.INTERFACE_SRC);

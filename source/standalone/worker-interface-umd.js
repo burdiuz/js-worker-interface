@@ -2,18 +2,18 @@
 (function(root, factory) {
   if (typeof define === 'function' && define.amd) {
     // AMD. Register as an anonymous module.
-    define(['WorkerEventDispatcher'], factory);
+    define([], factory);
   } else if (typeof module === 'object' && module.exports) {
     // Node. Does not work with strict CommonJS, but
     // only CommonJS-like environments that support module.exports,
     // like Node.
-    module.exports = factory(require('WorkerEventDispatcher'));
+    module.exports = factory();
   } else {
     // Browser globals (root is window)
-    root.WorkerInterface = factory(root.WorkerEventDispatcher);
+    root.WorkerInterface = factory();
   }
-}(this, function(WorkerEventDispatcher) {
+}(this, function() {
   // here should be injected worker-interface.js content
-  //=include ../worker-interface.temp.js
+  //=include ../../standalone-master.temp.js
   return WorkerInterface;
 }));
