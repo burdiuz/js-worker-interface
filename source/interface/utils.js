@@ -1,7 +1,3 @@
-/**
- * Created by Oleg Galaburda on 25.02.16.
- */
-
 function generateWorkerBlobData(importScriptURLs) {
   importScriptURLs = importScriptURLs instanceof Array ? importScriptURLs : [String(importScriptURLs)];
   var length = importScriptURLs.length;
@@ -42,5 +38,5 @@ function fullImportScriptURL(path) {
 }
 
 function isStandalone() {
-  return typeof Scripts !== 'undefined' && Scripts.hasOwnProperty('SELF_SRC');
+  return typeof(Scripts) !== 'undefined' && Scripts.hasOwnProperty('SELF_SRC');
 };

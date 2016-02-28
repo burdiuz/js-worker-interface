@@ -1,7 +1,3 @@
-/**
- * Created by Oleg Galaburda on 26.02.16.
- */
-
 function create(importScriptURLs) {
   return new WorkerInterface(importScriptURLs, WorkerInterface.DEDICATED);
 }

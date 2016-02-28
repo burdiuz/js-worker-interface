@@ -1,8 +1,3 @@
-/**
- * Created by Oleg Galaburda on 25.02.16.
- */
-
-
 //FIXME WorkerInterface success handler received its internal RequestTarget instance but should receive interface instance.
 function WorkerInterfaceBase(importScriptURL, type) {
   var _dispatcher = null;

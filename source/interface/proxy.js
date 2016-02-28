@@ -1,6 +1,3 @@
-/**
- * Created by Oleg Galaburda on 25.02.16.
- */
 WorkerInterface = (function() {
   function createHandlers(exclustions) {
     return {

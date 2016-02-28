@@ -1,7 +1,3 @@
-/**
- * Created by Oleg Galaburda on 19.02.16.
- */
-
 var CommandType = {
   GET: 'get',
   SET: 'set',

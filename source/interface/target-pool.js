@@ -1,7 +1,3 @@
-/**
- * Created by Oleg Galaburda on 25.02.16.
- */
-
 var TargetStatus = {
   PENDING: 'pending',
   RESOLVED: 'resolved',

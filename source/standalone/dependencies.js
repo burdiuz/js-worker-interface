@@ -1,7 +1,3 @@
-/**
- * Created by Oleg Galaburda on 24.02.16.
- */
-
 var EventDispatcher = (function() {
   //=include ../../node_modules/event-dispatcher/source/event-dispatcher.js
   return EventDispatcher;
