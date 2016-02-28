@@ -18,10 +18,6 @@
    * Created by Oleg Galaburda on 25.02.16.
    */
   var WorkerInterface;
-  /**
-   * Created by Oleg Galaburda on 25.02.16.
-   */
-  
   function generateWorkerBlobData(importScriptURLs) {
     importScriptURLs = importScriptURLs instanceof Array ? importScriptURLs : [String(importScriptURLs)];
     var length = importScriptURLs.length;
@@ -62,12 +58,8 @@
   }
   
   function isStandalone() {
-    return typeof Scripts !== 'undefined' && Scripts.hasOwnProperty('SELF_SRC');
+    return typeof(Scripts) !== 'undefined' && Scripts.hasOwnProperty('SELF_SRC');
   };
-  
-  /**
-   * Created by Oleg Galaburda on 19.02.16.
-   */
   
   var CommandType = {
     GET: 'get',
@@ -283,10 +275,6 @@
     }
     return result;
   }
-  
-  /**
-   * Created by Oleg Galaburda on 25.02.16.
-   */
   
   var TargetStatus = {
     PENDING: 'pending',
@@ -728,11 +716,6 @@
     }
   });
   
-  /**
-   * Created by Oleg Galaburda on 25.02.16.
-   */
-  
-  
   //FIXME WorkerInterface success handler received its internal RequestTarget instance but should receive interface instance.
   function WorkerInterfaceBase(importScriptURL, type) {
     var _dispatcher = null;
@@ -889,9 +872,6 @@
   }
   
   if (typeof(Proxy) === 'function') {
-    /**
-     * Created by Oleg Galaburda on 25.02.16.
-     */
     WorkerInterface = (function() {
       function createHandlers(exclustions) {
         return {
@@ -990,10 +970,6 @@
     })();
     
   }else{
-    /**
-     * Created by Oleg Galaburda on 26.02.16.
-     */
-    
     WorkerInterface = (function() {
       function WorkerInterface(importScriptURLs, type) {
         WorkerInterfaceBase.apply(this, arguments);
@@ -1009,10 +985,6 @@
     })();
     
   }
-  /**
-   * Created by Oleg Galaburda on 26.02.16.
-   */
-  
   function create(importScriptURLs) {
     return new WorkerInterface(importScriptURLs, WorkerInterface.DEDICATED);
   }

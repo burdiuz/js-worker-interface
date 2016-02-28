@@ -86,10 +86,17 @@ gulp.task('standalone-build-min', ['standalone-compile-min'], function(callback)
     });
 });
 // ---------
-gulp.task('clear-temp', ['standalone-build'], function() {
-  fs.unlink('./worker-interface.temp.js');
-  fs.unlink('./standalone-master.temp.js');
-  fs.unlink('./dependencies.temp.js');
+gulp.task('clear-temp', ['normal-build', 'standalone-build', 'standalone-compile-min'], function() {
+  var list = [
+    './standalone-master.temp.js',
+    './worker-interface.temp.js',
+    './dependencies.temp.js'
+  ];
+  list.forEach(function(item) {
+    if (fs.existsSync(item)) {
+      fs.unlink(item);
+    }
+  });
 });
 
-gulp.task('default', ['normal-build', 'standalone-build', 'standalone-build-min', 'clear-temp']);
+gulp.task('default', ['clear-temp']);
