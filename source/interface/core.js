@@ -15,9 +15,8 @@ var Events = {
   REQUEST_EVENT: '~WI:Request',
   RESPONSE_EVENT: '~WI:Response',
   internals: {
-    '~WI:Ready': true,
-    '~WI:Request': true,
-    '~WI:Response': true
+    //'~WI:Request': true, // we need to receive already created wrapper object and resolved dependencies to execute commands
+    '~WI:Response': true // here we receive only metadata because wrapper objects are already created with promises
   }
 };
 
@@ -126,7 +125,7 @@ var DataConverter = (function() {
 
   function convertFromRaw(data, sendRequestHandler) {
     var result = data;
-    if (dataType === 'object' && data !== null) {
+    if (typeof(data) === 'object' && data !== null) {
       if (RequestTargetLink.isLink(data)) { // if data is link
         result = convertRawToRequestTarget(data, sendRequestHandler);
       } else if (data instanceof Array) { // if data is Array of values, check its
@@ -158,13 +157,13 @@ var DataConverter = (function() {
         }
         return value;
       }
-    }
-    if (isPending(data)) {
-      result.push(data);
-    } else if (data instanceof Array) {
-      result = convertArrayTo(data, add);
-    } else if (data.constructor === Object) {
-      result = convertHashTo(data, add);
+      if (isPending(data)) {
+        result.push(data);
+      } else if (data instanceof Array) {
+        convertArrayTo(data, add);
+      } else if (data.constructor === Object) {
+        convertHashTo(data, add);
+      }
     }
     return result;
   }
@@ -172,7 +171,7 @@ var DataConverter = (function() {
   return {
     prepareToSend: prepareToSend,
     prepareToReceive: prepareToReceive,
-    lookupFor: lookupForPending
+    lookupForPending: lookupForPending
   };
 })();
 

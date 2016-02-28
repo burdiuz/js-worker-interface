@@ -11,6 +11,7 @@ var TargetStatus = {
 //FIXME Make an internal class of objects that will hold all of internal functionality & data of the RequestTarget and will never be exposed to public
 // RequestTarget<>-------RequestTargetInternals
 // This will help by moving all of RequestTarget internal methods to RequestTargetInternals prototype
+// Also try to use Symbols for naming, might help with hiding private members
 var RequestTarget = (function() {
 
   function _createRequestPackage(type, cmd, value, targetId) {
@@ -35,15 +36,28 @@ var RequestTarget = (function() {
         promise = Promise.reject(new Error('Target object was destroyed and cannot be used for calls.'));
         break;
       case TargetStatus.RESOLVED:
-        this._sendRequestHandler(pack, deferred);
+        //this._sendRequestHandler(pack, deferred);
+        this._sendRequestHandlerPrecondition(pack, deferred);
         break;
     }
     return promise;
   }
 
+  function _sendRequestHandlerPrecondition(pack, deferred) {
+    var list = DataConverter.lookupForPending(pack.value);
+    if (list.length) {
+      // FIXME Need to test on all platforms: In other browsers this might not work because may need list of Promise objects, not RequestTargets
+      Promise.all(list).then(function() {
+        this._sendRequestHandler(pack, deferred);
+      }.bind(this));
+    } else {
+      this._sendRequestHandler(pack, deferred);
+    }
+  }
+
   function _sendRequest(type, cmd, value) {
     var pack = _createRequestPackage(type, cmd, value, this.id);
-    var promise = _applyRequest(pack, createDeferred());
+    var promise = this._applyRequest(pack, createDeferred());
     return new RequestTarget(promise, this._sendRequestHandler);
   }
 
@@ -165,7 +179,7 @@ var RequestTarget = (function() {
       return promise;
     }
 
-    function _isTemporary() {
+    function _isTemporary(value) {
       /* TODO this case for Proxies, may be check for proxies support? this will work only if Proxies are enabled.
        For functions, they are temporary only if they have only CALL command in queue and child promises never created -- this commonly means that this target was used for function call in proxy.
        For any non-function target object, it will be marked as temporary only if has single item in request queue and child promises never created.
@@ -185,11 +199,11 @@ var RequestTarget = (function() {
       _status = TargetStatus.RESOLVED;
       if (RequestTargetLink.isLink(value)) {
         _link = RequestTargetLink.getLinkData(value);
-        _temporary = _isTemporary();
+        _temporary = _isTemporary(value);
         if (_temporary) {
           _queue[_queue.length - 1][1].promise.then(_destroy, _destroy);
         }
-        //INFO Sending "this" as result of promise resolve causes infinite loop of this.then(), so I've used wrapper object
+        //INFO Sending "this" as result of resolve() handler, causes infinite loop of this.then(), so I've used wrapper object
         value = {target: _this};
       }
       _sendQueue();
@@ -202,7 +216,8 @@ var RequestTarget = (function() {
         var pack = request[0];
         var deferred = request[1];
         pack.target = _link.id;
-        _this._sendRequestHandler(pack, deferred);
+        //_this._sendRequestHandler(pack, deferred);
+        _this._sendRequestHandlerPrecondition(pack, deferred);
       }
       _queue = null;
     }
@@ -254,6 +269,8 @@ var RequestTarget = (function() {
   RequestTarget.prototype.isActive = _isActive;
   RequestTarget.prototype.toJSON = _toJSON;
   RequestTarget.prototype._sendRequest = _sendRequest;
+  RequestTarget.prototype._applyRequest = _applyRequest;
+  RequestTarget.prototype._sendRequestHandlerPrecondition = _sendRequestHandlerPrecondition;
 
   return RequestTarget;
 })();

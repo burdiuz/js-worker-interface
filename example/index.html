@@ -24,8 +24,8 @@
   <script type="text/javascript" src="../source/interface/target-pool.js"></script>
   <script type="text/javascript" src="../source/interface/base-interface.js"></script>
   <script type="text/javascript" src="../source/interface/utils.js"></script>
-  <!--script type="text/javascript" src="../source/interface/worker-interface.js"></script-->
-  <script type="text/javascript" src="../source/interface/proxy.js"></script>
+  <script type="text/javascript" src="../source/interface/worker-interface.js"></script>
+  <!--script type="text/javascript" src="../source/interface/proxy.js"></script-->
   <script type="text/javascript" src="../source/interface/shared-api.js"></script>
   <script type="text/javascript">
     // DedicatedWorker UI
@@ -33,14 +33,13 @@
 
       var api = new WorkerInterface('webworker.js');
       console.log('Interface created', api);
+      api.get('callHandler').call(null, api.get('requestTime')).then(function(data) {
+        console.log('setHandler called', arguments);
+      });
       api.then(function(obj) {
         console.log('Interface ready!', obj);
-        api.requestTime().then(function() {
-          console.log('### requestTime called', arguments);
-        });
-        // FIXME Add abiity to timeout function CALL or property SET until arguments or value resolved.
-        api.setHandler(api.requestTime).then(function() {
-          console.log('### setHandler called', arguments);
+        api.get('requestTime').call().then(function(data) {
+          console.log('requestTime resolved', arguments);
         });
       });
       /*
@@ -57,7 +56,7 @@
         api.requestTime().then(function() {
           console.log('### requestTime called', arguments);
         });
-        api.setHandler().then(function() {
+        api.setHandler(api.requestTime).then(function() {
           console.log('### setHandler called', arguments);
         });
       });

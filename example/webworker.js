@@ -9,8 +9,8 @@ importScripts(
   '../source/interface/target-pool.js',
   '../source/interface/base-interface.js',
   '../source/interface/utils.js',
-  //'../source/interface/worker-interface.js',
-  '../source/interface/proxy.js',
+  '../source/interface/worker-interface.js',
+  //'../source/interface/proxy.js',
   '../source/interface/shared-api.js'
 );
 var api = WorkerInterface.self = new WorkerInterface();
@@ -27,7 +27,7 @@ api.pool = {
   requestTime: function() {
     return Date.now();
   },
-  setHandler: function(handler) {
+  callHandler: function(handler) {
     return handler();
   }
 };
