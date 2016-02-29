@@ -111,7 +111,9 @@
   var DataConverter = (function() {
   
     function convertLinkToRaw(data) {
-      if (typeof(data.toJSON) === 'function') {
+      if (data.target instanceof RequestTarget) {
+        data = data.target.toJSON();
+      }else if (typeof(data.toJSON) === 'function') {
         data = data.toJSON();
       }
       return data;
@@ -204,7 +206,7 @@
     }
   
     function isPending(value) {
-      return value instanceof RequestTarget && value.target.status == TargetStatus.PENDING;
+      return value.target instanceof RequestTarget && value.target.status == TargetStatus.PENDING;
     }
   
     function lookupForPending(data) {
@@ -275,6 +277,10 @@
     }
     return result;
   }
+  
+  /**
+   * Created by Oleg Galaburda on 25.02.16.
+   */
   
   var TargetStatus = {
     PENDING: 'pending',
@@ -365,13 +371,14 @@
     }
   
     function _toJSON() {
-      return {
+      var json = {
         _targetLink_: {
-          id: this.id,
-          type: this.targetType,
-          poolId: this.poolId
+          id: this.target.id,
+          type: this.target.targetType,
+          poolId: this.target.poolId
         }
       };
+      return json;
     }
   
     /**
@@ -383,16 +390,16 @@
      */
     function RequestTarget(_promise, sendRequestHandler) {
       var _this = this;
-      var _link;
+      var _link = {};
       var _temporary;
       var _hadChildPromises = false;
       var _status = TargetStatus.PENDING;
       var _queue = [];
   
-      Object.defineProperties(this, {
+      Object.defineProperties(_this, {
         id: {
           get: function() {
-            return _link ? _link.id : null;
+            return _link.id;
           },
           configurable: true
         },
@@ -403,13 +410,13 @@
         },
         targetType: {
           get: function() {
-            return _link ? _link.type : null;
+            return _link.type;
           },
           configurable: true
         },
         poolId: {
           get: function() {
-            return _link ? _link.poolId : null;
+            return _link.poolId;
           },
           configurable: true
         },
@@ -422,7 +429,7 @@
             if (this.isActive()) {
               _temporary = Boolean(value);
               if (_status == TargetStatus.RESOLVED) {
-                this.destroy();
+                _destroy();
               }
             }
           }
@@ -438,7 +445,7 @@
           configurable: true
         },
         _targetLink_: {
-          value: this
+          value: _this
         }
       });
   
@@ -639,7 +646,7 @@
     };
   
     RequestTargetLink.isLink = function(object) {
-      return typeof(object) === 'object' && typeof(object._targetLink_) === 'object' && object._targetLink_;
+      return object && typeof(object._targetLink_) === 'object' && object._targetLink_;
     };
   
     return RequestTargetLink;
@@ -873,6 +880,7 @@
   
   if (typeof(Proxy) === 'function') {
     WorkerInterface = (function() {
+    
       function createHandlers(exclustions) {
         return {
           'get': function(wrapper, name) {
@@ -910,23 +918,57 @@
             return false;
           },
           'ownKeys': function(wrapper) {
-            return [];
+            return Object.getOwnPropertyNames(exclustions);
+          },
+          'enumerate': function(wrapper) {
+            return Object.getOwnPropertyNames(exclustions);
+          },
+          'getOwnPropertyDescriptor': function(wrapper, name) {
+            //TODO Property descriptors should be prohibited or fixed
+            var descr;
+            if (FunctionExclustions[name]) {
+              descr = Object.getOwnPropertyDescriptor(wrapper, name);
+            }else{
+              descr = Object.getOwnPropertyDescriptor(wrapper.target, name);
+            }
+            console.log(name, wrapper.target, descr);
+            return descr;
           }
         };
       }
     
+      var FunctionExclustions = {
+        'arguments': true,
+        'caller': true,
+        'prototype': true
+      };
+    
       // Look if toJSON should be added to allowed
       var RequestTargetAllowed = {
+        /*
+         INFO arguments and caller were included because they are required function properties
+         https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function/arguments
+         */
+        'arguments': true,
+        'caller': true,
+        'prototype': true,
+        //---------
+        'get': true,
+        'set': true,
+        'call': true,
+        'execute': true,
         'target': true,
         'then': true,
         'catch': true,
-        '_targetLink_': true,
-        'toJSON': true
+        '_targetLink_': true
       };
     
       var RequestTargetHandlers = createHandlers(RequestTargetAllowed);
     
       var WorkerInterfaceAllowed = {
+        'arguments': true,
+        'caller': true,
+        'prototype': true,
         'get': true,
         'set': true,
         'call': true,
@@ -958,6 +1000,18 @@
         'get': function(target, name) {
           return target[name];
         },
+        'set': function(target, name, value) {
+          target[name] = value;
+        },
+        'has': function(target, name) {
+          return target.hasOwnProperty(name);
+        },
+        'ownKeys': function(target) {
+          return Object.getOwnPropertyNames(target);
+        },
+        'deleteProperty': function(target, name) {
+          delete target[name];
+        }
       });
     
       Object.defineProperties(WorkerInterface, {

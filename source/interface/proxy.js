@@ -1,4 +1,5 @@
 WorkerInterface = (function() {
+
   function createHandlers(exclustions) {
     return {
       'get': function(wrapper, name) {
@@ -36,23 +37,57 @@ WorkerInterface = (function() {
         return false;
       },
       'ownKeys': function(wrapper) {
-        return [];
+        return Object.getOwnPropertyNames(exclustions);
+      },
+      'enumerate': function(wrapper) {
+        return Object.getOwnPropertyNames(exclustions);
+      },
+      'getOwnPropertyDescriptor': function(wrapper, name) {
+        //TODO Property descriptors should be prohibited or fixed
+        var descr;
+        if (FunctionExclustions[name]) {
+          descr = Object.getOwnPropertyDescriptor(wrapper, name);
+        }else{
+          descr = Object.getOwnPropertyDescriptor(wrapper.target, name);
+        }
+        console.log(name, wrapper.target, descr);
+        return descr;
       }
     };
   }
 
+  var FunctionExclustions = {
+    'arguments': true,
+    'caller': true,
+    'prototype': true
+  };
+
   // Look if toJSON should be added to allowed
   var RequestTargetAllowed = {
+    /*
+     INFO arguments and caller were included because they are required function properties
+     https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function/arguments
+     */
+    'arguments': true,
+    'caller': true,
+    'prototype': true,
+    //---------
+    'get': true,
+    'set': true,
+    'call': true,
+    'execute': true,
     'target': true,
     'then': true,
     'catch': true,
-    '_targetLink_': true,
-    'toJSON': true
+    '_targetLink_': true
   };
 
   var RequestTargetHandlers = createHandlers(RequestTargetAllowed);
 
   var WorkerInterfaceAllowed = {
+    'arguments': true,
+    'caller': true,
+    'prototype': true,
     'get': true,
     'set': true,
     'call': true,
@@ -84,6 +119,18 @@ WorkerInterface = (function() {
     'get': function(target, name) {
       return target[name];
     },
+    'set': function(target, name, value) {
+      target[name] = value;
+    },
+    'has': function(target, name) {
+      return target.hasOwnProperty(name);
+    },
+    'ownKeys': function(target) {
+      return Object.getOwnPropertyNames(target);
+    },
+    'deleteProperty': function(target, name) {
+      delete target[name];
+    }
   });
 
   Object.defineProperties(WorkerInterface, {

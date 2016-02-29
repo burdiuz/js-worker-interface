@@ -16,27 +16,32 @@
           integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS"
           crossorigin="anonymous"></script-->
   <script type="text/javascript" src="../../bower_components/event-dispatcher/dist/event-dispatcher.js"></script>
-  <script type="text/javascript"
-          src="../../bower_components/messageport-dispatcher/dist/messageport-dispatcher.js"></script>
-  <script type="text/javascript"
-          src="../../bower_components/worker-event-dispatcher/dist/worker-event-dispatcher.js"></script>
-  <script type="text/javascript" src="../../dist/worker-interface.js"></script>
+  <script type="text/javascript" src="../../bower_components/messageport-dispatcher/dist/messageport-dispatcher.js"></script>
+  <script type="text/javascript" src="../../bower_components/worker-event-dispatcher/dist/worker-event-dispatcher.js"></script>
+  <script type="text/javascript" src="../../source/interface/utils.js"></script>
+  <script type="text/javascript" src="../../source/interface/core.js"></script>
+  <script type="text/javascript" src="../../source/interface/target-pool.js"></script>
+  <script type="text/javascript" src="../../source/interface/base-interface.js"></script>
+  <!--
+  <script type="text/javascript" src="../../source/interface/worker-interface.js"></script>
+  -->
+  <script type="text/javascript" src="../../source/interface/proxy.js"></script>
+  <script type="text/javascript" src="../../source/interface/shared-api.js"></script>
   <script type="text/javascript">
     // DedicatedWorker UI
     (function() {
 
-      var api = new WorkerInterface('../webworker.js');
+      var api = new WorkerInterface('webworker.js');
+
       console.log('Interface created');
-      api.callHandler(api.requestTime).then(function() {
-        console.log('### setHandler called', arguments);
+
+      api.get('callHandler').call(null, api.get('requestTime')).then(function(data) {
+        console.log('setHandler called', arguments);
       });
       api.then(function(obj) {
         console.log('Interface ready!', obj);
-        api.requestTime().then(function() {
-          console.log('### requestTime called', arguments);
-        });
-        api.callHandler(api.requestTime).then(function() {
-          console.log('### setHandler called', arguments);
+        api.get('requestTime').call().then(function(data) {
+          console.log('requestTime resolved', arguments);
         });
       });
 

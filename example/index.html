@@ -16,17 +16,16 @@
           integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS"
           crossorigin="anonymous"></script-->
   <script type="text/javascript" src="../bower_components/event-dispatcher/dist/event-dispatcher.js"></script>
-  <script type="text/javascript"
-          src="../bower_components/messageport-dispatcher/dist/messageport-dispatcher.js"></script>
-  <script type="text/javascript"
-          src="../bower_components/worker-event-dispatcher/dist/worker-event-dispatcher.js"></script>
+  <script type="text/javascript" src="../bower_components/messageport-dispatcher/dist/messageport-dispatcher.js"></script>
+  <script type="text/javascript" src="../bower_components/worker-event-dispatcher/dist/worker-event-dispatcher.js"></script>
   <script type="text/javascript" src="../dist/worker-interface.js"></script>
   <script type="text/javascript">
     // DedicatedWorker UI
     (function() {
 
       var api = new WorkerInterface('webworker.js');
-      console.log('Interface created', api);
+
+      console.log('Interface created');
       api.get('callHandler').call(null, api.get('requestTime')).then(function(data) {
         console.log('setHandler called', arguments);
       });

@@ -87,13 +87,14 @@ var RequestTarget = (function() {
   }
 
   function _toJSON() {
-    return {
+    var json = {
       _targetLink_: {
-        id: this.id,
-        type: this.targetType,
-        poolId: this.poolId
+        id: this.target.id,
+        type: this.target.targetType,
+        poolId: this.target.poolId
       }
     };
+    return json;
   }
 
   /**
@@ -105,16 +106,16 @@ var RequestTarget = (function() {
    */
   function RequestTarget(_promise, sendRequestHandler) {
     var _this = this;
-    var _link;
+    var _link = {};
     var _temporary;
     var _hadChildPromises = false;
     var _status = TargetStatus.PENDING;
     var _queue = [];
 
-    Object.defineProperties(this, {
+    Object.defineProperties(_this, {
       id: {
         get: function() {
-          return _link ? _link.id : null;
+          return _link.id;
         },
         configurable: true
       },
@@ -125,13 +126,13 @@ var RequestTarget = (function() {
       },
       targetType: {
         get: function() {
-          return _link ? _link.type : null;
+          return _link.type;
         },
         configurable: true
       },
       poolId: {
         get: function() {
-          return _link ? _link.poolId : null;
+          return _link.poolId;
         },
         configurable: true
       },
@@ -144,7 +145,7 @@ var RequestTarget = (function() {
           if (this.isActive()) {
             _temporary = Boolean(value);
             if (_status == TargetStatus.RESOLVED) {
-              this.destroy();
+              _destroy();
             }
           }
         }
@@ -160,7 +161,7 @@ var RequestTarget = (function() {
         configurable: true
       },
       _targetLink_: {
-        value: this
+        value: _this
       }
     });
 
@@ -361,7 +362,7 @@ var RequestTargetLink = (function() {
   };
 
   RequestTargetLink.isLink = function(object) {
-    return typeof(object) === 'object' && typeof(object._targetLink_) === 'object' && object._targetLink_;
+    return object && typeof(object._targetLink_) === 'object' && object._targetLink_;
   };
 
   return RequestTargetLink;

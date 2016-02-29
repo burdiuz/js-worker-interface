@@ -15,13 +15,13 @@
   <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"
           integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS"
           crossorigin="anonymous"></script-->
-  <script type="text/javascript" src="../dist/worker-interface.standalone.js"></script>
+  <script type="text/javascript" src="../../dist/worker-interface.standalone.js"></script>
   <script type="text/javascript">
     // DedicatedWorker UI
     (function() {
 
       var api = new WorkerInterface('webworker.js');
-      console.log('Interface created', api);
+      console.log('Interface created');
       api.get('callHandler').call(null, api.get('requestTime')).then(function(data) {
         console.log('setHandler called', arguments);
       });
@@ -31,40 +31,6 @@
           console.log('requestTime resolved', arguments);
         });
       });
-      /*
-      api.then(function(obj) {
-        console.log('Interface ready!', obj);
-        api.get('requestTime').call().then(function(data) {
-          console.log('requestTime resolved', arguments);
-        });
-      });
-      */
-      /*
-      api.then(function(obj) {
-        console.log('Interface ready!', obj);
-        api.requestTime().then(function() {
-          console.log('### requestTime called', arguments);
-        });
-        api.setHandler(api.requestTime).then(function() {
-          console.log('### setHandler called', arguments);
-        });
-      });
-      */
-
-      /*
-       api.then(function(obj) {
-       console.log('Interface ready!', obj);
-       api.get('requestTime').then(function(data) {
-       console.log('requestTime resolved', arguments);
-       data.target.call().then(function() {
-       console.log('requestTime called', arguments);
-       });
-       api.call('setHandler', data.target).then(function() {
-       console.log('setHandler called', arguments);
-       });
-       });
-       });
-       */
 
       return;
 

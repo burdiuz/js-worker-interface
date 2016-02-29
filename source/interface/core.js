@@ -48,7 +48,9 @@ var createDeferred = (function() {
 var DataConverter = (function() {
 
   function convertLinkToRaw(data) {
-    if (typeof(data.toJSON) === 'function') {
+    if (data.target instanceof RequestTarget) {
+      data = data.target.toJSON();
+    }else if (typeof(data.toJSON) === 'function') {
       data = data.toJSON();
     }
     return data;
@@ -141,7 +143,7 @@ var DataConverter = (function() {
   }
 
   function isPending(value) {
-    return value instanceof RequestTarget && value.target.status == TargetStatus.PENDING;
+    return value.target instanceof RequestTarget && value.target.status == TargetStatus.PENDING;
   }
 
   function lookupForPending(data) {

@@ -9,4 +9,4 @@ api.pool = {
     return handler();
   }
 };
-console.log('Worker script was imported.', api);
+console.log('Worker script was imported.');

@@ -5,18 +5,12 @@ importScripts(
   '../bower_components/event-dispatcher/dist/event-dispatcher.js',
   '../bower_components/messageport-dispatcher/dist/messageport-dispatcher.js',
   '../bower_components/worker-event-dispatcher/dist/worker-event-dispatcher.js',
+
   '../dist/worker-interface.js'
 );
 var api = WorkerInterface.self = new WorkerInterface();
 // -------------- self
-/*
- var api = WorkerEventDispatcher.self();
- api.addEventListener('time:request', function() {
- setTimeout(function() {
- api.dispatchEvent('time:response', Date.now());
- }, 200);
- });
- */
+
 api.pool = {
   requestTime: function() {
     return Date.now();
@@ -25,4 +19,5 @@ api.pool = {
     return handler();
   }
 };
-console.log('Worker script was imported.', api);
+
+console.log('Worker script was imported.');
