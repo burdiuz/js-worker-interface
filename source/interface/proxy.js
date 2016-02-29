@@ -4,17 +4,17 @@ WorkerInterface = (function() {
     return {
       'get': function(wrapper, name) {
         var value;
-        if (exclustions[name]) {
+        if (exclustions[name] || typeof(name) === 'symbol') {
           value = wrapper.target[name];
         } else {
           var child = wrapper.target.get(name);
 
-          function childTargetWrapper() {
+          function RequestTargetProxy() {
             return child;
           }
 
-          childTargetWrapper.target = child;
-          value = createRequestTargetProxy(childTargetWrapper);
+          RequestTargetProxy.target = child;
+          value = createRequestTargetProxy(RequestTargetProxy);
         }
         return value;
       },
@@ -23,7 +23,7 @@ WorkerInterface = (function() {
       },
       'set': function(wrapper, name, value) {
         var result;
-        if (exclustions[name]) {
+        if (exclustions[name] || typeof(name) === 'symbol') {
           result = wrapper.target[name] = value;
         } else {
           result = wrapper.target.set(name, value);
@@ -31,32 +31,30 @@ WorkerInterface = (function() {
         return result;
       },
       'has': function(wrapper, name) {
-        return Boolean(exclustions[name]);
+        return wrapper.target.hasOwnProperty(name);
       },
       'deleteProperty': function(wrapper, name) {
         return false;
       },
       'ownKeys': function(wrapper) {
-        return Object.getOwnPropertyNames(exclustions);
+        return Object.getOwnPropertyNames(FunctionExclusions); // Object.getOwnPropertyNames(exclustions);
       },
       'enumerate': function(wrapper) {
-        return Object.getOwnPropertyNames(exclustions);
+        return Object.getOwnPropertyNames(FunctionExclusions); // Object.getOwnPropertyNames(exclustions);
       },
       'getOwnPropertyDescriptor': function(wrapper, name) {
-        //TODO Property descriptors should be prohibited or fixed
         var descr;
-        if (FunctionExclustions[name]) {
+        if (FunctionExclusions.hasOwnProperty(name)) {
           descr = Object.getOwnPropertyDescriptor(wrapper, name);
-        }else{
+        } else {
           descr = Object.getOwnPropertyDescriptor(wrapper.target, name);
         }
-        console.log(name, wrapper.target, descr);
         return descr;
       }
     };
   }
 
-  var FunctionExclustions = {
+  var FunctionExclusions = {
     'arguments': true,
     'caller': true,
     'prototype': true
@@ -109,12 +107,12 @@ WorkerInterface = (function() {
     'construct': function(targetDefinition, args) {
       var target = new targetDefinition(args[0], args[1], args[2], args[3]); // new WorkerInterfaceBase(...args);
       //INFO targetWrapper needs for "apply" interceptor, it works only for functions as target
-      function targetWrapper() {
+      function WorkerInterfaceProxy() {
         return target;
       }
 
-      targetWrapper.target = target;
-      return new Proxy(targetWrapper, WorkerInterfaceHandlers);
+      WorkerInterfaceProxy.target = target;
+      return new Proxy(WorkerInterfaceProxy, WorkerInterfaceHandlers);
     },
     'get': function(target, name) {
       return target[name];

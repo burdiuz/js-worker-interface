@@ -26,12 +26,12 @@
     (function() {
 
       var api = new WorkerInterface('../webworker.js');
-      console.log('Interface created');
+      console.log('Interface created', api);
       api.callHandler(api.requestTime).then(function() {
         console.log('### setHandler called', arguments);
       });
       api.then(function(obj) {
-        console.log('Interface ready!', obj);
+        console.log('Interface ready!');
         api.requestTime().then(function() {
           console.log('### requestTime called', arguments);
         });
