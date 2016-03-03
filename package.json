@@ -49,6 +49,6 @@
     "sinon-chai": "^2.8.0"
   },
   "scripts": {
-    "test": "./node_modules/.bin/karma start --single-run --browsers PhantomJS karma.conf.js"
+    "test": "./node_modules/.bin/karma start --single-run --browsers Firefox karma.conf.js"
   }
 }
