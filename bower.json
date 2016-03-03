@@ -41,7 +41,7 @@
     "url": "git://github.com/burdiuz/js-worker-interface.git"
   },
   "dependencies": {
-	"worker-event-dispatcher": "git://github.com/burdiuz/js-worker-event-dispatcher.git"
+	"worker-event-dispatcher": ">=0.0.3"
   },
   "devDependencies": {
   }
