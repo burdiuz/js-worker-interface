@@ -14,18 +14,18 @@ module.exports = function(config) {
 
 
     // list of files / patterns to load in the browser
+    /*FIXME Create separate config file for Proxies test and add script to travis-ci, how to merge coverage reports?
+    Look if possible to run one carma instance for different configs
+    */
     files: [
       'node_modules/event-dispatcher/dist/event-dispatcher.js',
       'node_modules/messageport-dispatcher/dist/messageport-dispatcher.js',
       'node_modules/worker-event-dispatcher/dist/worker-event-dispatcher.js',
-      /* Without ES6 Proxies
       'source/interface/utils.js',
       'source/interface/core.js',
       'source/interface/target-pool.js',
       'source/interface/base-interface.js',
       'source/interface/worker-interface.js',
-      */
-      'source/interface/*.js',
       'tests/stubs.js',
       'tests/*.spec.js'
     ],
