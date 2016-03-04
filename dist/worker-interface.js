@@ -285,6 +285,7 @@
     DESTROYED: 'destroyed'
   };
   //FIXME Make an internal class of objects that will hold all of internal functionality & data of the RequestTarget and will never be exposed to public
+  //FIXME Use Symbol to store internals
   // RequestTarget<>-------RequestTargetInternals
   // This will help by moving all of RequestTarget internal methods to RequestTargetInternals prototype
   // Also try to use Symbols for naming, might help with hiding private members
