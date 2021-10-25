@@ -2,7 +2,7 @@
 [![Coverage Status](https://coveralls.io/repos/github/burdiuz/js-worker-interface/badge.svg?branch=master)](https://coveralls.io/github/burdiuz/js-worker-interface?branch=master)
 [![Build Status](https://travis-ci.org/burdiuz/js-worker-interface.svg?branch=master)](https://travis-ci.org/burdiuz/js-worker-interface)  
   
-> This project is currently under heavy development. So documentation will come a bit later(after tests are done, check the badge above).
+> This repo is archived and project was moved to [Deferred Data Access monorepo](https://github.com/burdiuz/js-deferred-data-access/tree/master/packages/worker-interface).
 
 Interface wrapper for Web Workers, allows requesting properties and calling methods from Worker and receive result in a promise.
 ```javascript
